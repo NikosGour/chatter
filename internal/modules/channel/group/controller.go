@@ -1,4 +1,4 @@
-package user
+package group
 
 import (
 	"github.com/NikosGour/chatter/internal/common"
@@ -6,21 +6,21 @@ import (
 )
 
 type Controller struct {
-	user_repo Repository
+	group_repo Repository
 }
 
-func NewController(user_repo Repository) *Controller {
-	uc := &Controller{user_repo: user_repo}
-	return uc
+func NewController(group_repo Repository) *Controller {
+	gc := &Controller{group_repo: group_repo}
+	return gc
 }
 
-func (uc *Controller) Create(c *fiber.Ctx) error {
-	u, err := common.BodyParse[User](c)
+func (gc *Controller) Create(c *fiber.Ctx) error {
+	g, err := common.BodyParse[Group](c)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
 
-	insert_id, err := uc.user_repo.Create(u)
+	insert_id, err := gc.group_repo.Create(g)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -28,25 +28,25 @@ func (uc *Controller) Create(c *fiber.Ctx) error {
 	return c.JSON(insert_id)
 }
 
-func (uc *Controller) GetAll(c *fiber.Ctx) error {
-	us, err := uc.user_repo.GetAll()
+func (gc *Controller) GetAll(c *fiber.Ctx) error {
+	gs, err := gc.group_repo.GetAll()
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
 
-	return c.JSON(us)
+	return c.JSON(gs)
 }
 
-func (uc *Controller) GetById(c *fiber.Ctx) error {
+func (gc *Controller) GetById(c *fiber.Ctx) error {
 	id, err := common.ParamsParseUUID(c, "id")
 	if err != nil {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
 	}
 
-	u, err := uc.user_repo.GetByID(id)
+	g, err := gc.group_repo.GetByID(id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
 
-	return c.JSON(u)
+	return c.JSON(g)
 }

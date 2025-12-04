@@ -3,17 +3,26 @@ package group
 import (
 	"time"
 
+	"github.com/NikosGour/chatter/internal/common"
 	"github.com/NikosGour/chatter/internal/modules/channel/user"
 	"github.com/google/uuid"
 )
 
 type Group struct {
-	Id          uuid.UUID
-	Name        string
-	Users       []user.User
-	DateCreated time.Time
+	Id          uuid.UUID   `json:"id,omitempty" db:"id"`
+	Name        string      `validate:"required" json:"name,omitempty" db:"name"`
+	Users       []user.User `json:"users,omitempty" db:"users"`
+	DateCreated time.Time   `validate:"required" json:"date_created,omitempty" db:"date_created"`
 }
 
 func (g *Group) GetId() uuid.UUID {
 	return g.Id
+}
+
+func (g Group) Validate() error {
+	err := common.Validate.Struct(g)
+	if err != nil {
+		return err
+	}
+	return nil
 }
