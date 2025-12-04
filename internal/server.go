@@ -2,15 +2,20 @@ package internal
 
 import (
 	"github.com/NikosGour/chatter/internal/common"
+	"github.com/NikosGour/chatter/internal/modules/channel"
+	"github.com/NikosGour/chatter/internal/modules/channel/user"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/NikosGour/logging/log"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 type APIServer struct {
 	listening_addr string
 	db             *storage.PostgreSQLStorage
+
+	user_controller *user.Controller
 }
 
 func NewAPIServer(db *storage.PostgreSQLStorage) *APIServer {
@@ -32,6 +37,12 @@ func (s *APIServer) Start() {
 func (s *APIServer) SetupServer() *fiber.App {
 	app := fiber.New()
 
+	app.Use(logger.New(logger.Config{
+		Format: "${time} | ${status} | ${latency} | ${ip} | ${method} | ${path} | Params: ${queryParams} | ReqBody: ${body} | ResBody: ${resBody} | ${error}\n",
+	}))
+
+	s.DependencyInjection()
+
 	ws := app.Group("/ws", func(c *fiber.Ctx) error {
 		if !websocket.IsWebSocketUpgrade(c) {
 			return fiber.ErrUpgradeRequired
@@ -50,5 +61,15 @@ func (s *APIServer) SetupServer() *fiber.App {
 	}))
 
 	ws.Get("/message", func(c *fiber.Ctx) error { return nil })
+
+	user := app.Group("/user")
+	user.Post("/", s.user_controller.Create)
+	user.Get("/", s.user_controller.GetAll)
 	return app
+}
+
+func (s *APIServer) DependencyInjection() {
+	channel_repo := channel.NewRepository(s.db)
+	user_repo := user.NewRepository(s.db, channel_repo)
+	s.user_controller = user.NewController(user_repo)
 }
