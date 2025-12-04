@@ -1,0 +1,14 @@
+services:
+    database:
+        image: postgres:latest
+        expose:
+            - 5432
+        ports:
+            - "5432:5432"
+        environment:
+            - POSTGRES_PASSWORD=${POSTGRES_ROOT_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+        volumes:
+            - database_data:/var/lib/postgresql/data
+volumes:
+    database_data:

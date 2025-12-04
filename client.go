@@ -9,7 +9,7 @@ import (
 
 func main() {
 	d := new(websocket.Dialer)
-	conn, res, err := d.Dial("ws://localhost:8080", nil)
+	conn, res, err := d.Dial("ws://localhost:8080/ws/test", nil)
 	if err != nil {
 		log.Fatal("on Dial: %s", err)
 	}

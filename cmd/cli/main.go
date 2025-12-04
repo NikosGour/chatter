@@ -1,23 +1,17 @@
 package main
 
 import (
-	log "github.com/NikosGour/logging/log"
-	"github.com/gofiber/contrib/websocket"
-	"github.com/gofiber/fiber/v2"
+	"github.com/NikosGour/chatter/internal"
+	"github.com/NikosGour/chatter/internal/common"
+	"github.com/NikosGour/chatter/internal/storage"
 )
 
 func main() {
-	app := fiber.New()
+	common.InitDotenv()
 
-	app.Get("/", websocket.New(func(c *websocket.Conn) {
-		err := c.WriteMessage(websocket.TextMessage, []byte("nikos"))
-		if err != nil {
-			log.Error("on WriteMessage: %s", err)
-			return
-		}
+	db := storage.NewPostgreSQLStorage()
 
-		log.Info("Sent")
-	}))
+	api := internal.NewAPIServer(db)
 
-	log.Fatal("%s", app.Listen(":8080"))
+	api.Start()
 }
