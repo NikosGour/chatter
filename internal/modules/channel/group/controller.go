@@ -10,11 +10,11 @@ import (
 )
 
 type Controller struct {
-	group_repo Repository
+	group_service *Service
 }
 
-func NewController(group_repo Repository) *Controller {
-	gc := &Controller{group_repo: group_repo}
+func NewController(group_service *Service) *Controller {
+	gc := &Controller{group_service: group_service}
 	return gc
 }
 
@@ -24,7 +24,7 @@ func (gc *Controller) Create(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error())
 	}
 
-	insert_id, err := gc.group_repo.Create(g)
+	insert_id, err := gc.group_service.Create(g)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -33,7 +33,7 @@ func (gc *Controller) Create(c *fiber.Ctx) error {
 }
 
 func (gc *Controller) GetAll(c *fiber.Ctx) error {
-	gs, err := gc.group_repo.GetAll()
+	gs, err := gc.group_service.GetAll()
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -47,7 +47,7 @@ func (gc *Controller) GetById(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
 	}
 
-	g, err := gc.group_repo.GetByID(id)
+	g, err := gc.group_service.GetByID(id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -61,7 +61,7 @@ func (gc *Controller) GetUsersById(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
 	}
 
-	us, err := gc.group_repo.GetUsers(id)
+	us, err := gc.group_service.GetUsers(id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -87,7 +87,7 @@ func (gc *Controller) AddUserToGroup(c *fiber.Ctx) error {
 	log.Debug("group_id: %#v", group_id.String())
 	log.Debug("body.User_id.String(): %#v", body.User_id.String())
 
-	err = gc.group_repo.AddUserToGroup(body.User_id, group_id)
+	err = gc.group_service.AddUserToGroup(body.User_id, group_id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}

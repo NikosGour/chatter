@@ -82,6 +82,7 @@ func (s *APIServer) DependencyInjection() {
 	channel_repo := channel.NewRepository(s.db)
 	user_repo := user.NewRepository(s.db, channel_repo)
 	group_repo := group.NewRepository(s.db, channel_repo, user_repo)
+	group_service := group.NewService(group_repo, channel_repo, user_repo)
 	s.user_controller = user.NewController(user_repo)
-	s.group_controller = group.NewController(group_repo)
+	s.group_controller = group.NewController(group_service)
 }
