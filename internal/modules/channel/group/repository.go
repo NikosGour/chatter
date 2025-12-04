@@ -1,9 +1,12 @@
 package group
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/NikosGour/chatter/internal/modules/channel"
+	"github.com/NikosGour/chatter/internal/modules/channel/user"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/google/uuid"
 )
@@ -12,16 +15,18 @@ type Repository interface {
 	GetAll() ([]Group, error)
 	GetByID(id uuid.UUID) (*Group, error)
 	Create(group *Group) (uuid.UUID, error)
+	AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error
 }
 
 type repository struct {
 	db *storage.PostgreSQLStorage
 
-	chr channel.Repository
+	channel_repo channel.Repository
+	user_repo    user.Repository
 }
 
-func NewRepository(db *storage.PostgreSQLStorage, chr channel.Repository) Repository {
-	gr := &repository{db: db, chr: chr}
+func NewRepository(db *storage.PostgreSQLStorage, channel_repo channel.Repository, user_repo user.Repository) Repository {
+	gr := &repository{db: db, channel_repo: channel_repo, user_repo: user_repo}
 	return gr
 }
 
@@ -62,7 +67,7 @@ func (gr *repository) GetByID(id uuid.UUID) (*Group, error) {
 }
 
 func (gr *repository) Create(group *Group) (uuid.UUID, error) {
-	id, err := gr.chr.Create(channel.ChannelTypeGroup)
+	id, err := gr.channel_repo.Create(channel.ChannelTypeGroup)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("On channel create: %w", err)
 	}
@@ -87,6 +92,37 @@ func (gr *repository) Create(group *Group) (uuid.UUID, error) {
 	}
 
 	return insert_id, nil
+}
+
+func (gr *repository) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
+	_, err := gr.user_repo.GetByID(user_id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return user.ErrUserNotFound
+		}
+		return err
+	}
+
+	_, err = gr.GetByID(group_id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrGroupNotFound
+		}
+		return err
+	}
+
+	q := `INSERT INTO group_members (group_id, user_id)
+		  VALUES (:group,:user)`
+
+	_, err = gr.db.NamedExec(q, struct {
+		Group uuid.UUID `db:"group"`
+		User  uuid.UUID `db:"user"`
+	}{Group: group_id, User: user_id})
+	if err != nil {
+		return fmt.Errorf("On q=`%s`: %w", q, err)
+	}
+
+	return nil
 }
 
 func (gr *repository) toGroup(udb *groupDBO) *Group {

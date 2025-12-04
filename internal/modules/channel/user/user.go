@@ -1,10 +1,15 @@
 package user
 
 import (
+	"errors"
 	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
 	"github.com/google/uuid"
+)
+
+var (
+	ErrUserNotFound = errors.New("user not found")
 )
 
 type User struct {

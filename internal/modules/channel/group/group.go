@@ -1,11 +1,16 @@
 package group
 
 import (
+	"errors"
 	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
 	"github.com/NikosGour/chatter/internal/modules/channel/user"
 	"github.com/google/uuid"
+)
+
+var (
+	ErrGroupNotFound = errors.New("group not found")
 )
 
 type Group struct {
