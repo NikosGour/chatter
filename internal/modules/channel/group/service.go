@@ -22,6 +22,9 @@ func NewService(group_repo Repository, channel_repo channel.Repository, user_rep
 	return s
 }
 
+// Retrieves all group records from the database.
+//
+// Might return any sql error.
 func (s *Service) GetAll() ([]Group, error) {
 	group_dbos, err := s.group_repo.GetAll()
 	if err != nil {
@@ -39,6 +42,9 @@ func (s *Service) GetAll() ([]Group, error) {
 	return groups, nil
 }
 
+// Retrieves a group given the UUID.
+//
+// Might return ErrGroupNotFound or any other sql error
 func (s *Service) GetByID(id uuid.UUID) (*Group, error) {
 	group_dbo, err := s.group_repo.GetByID(id)
 	if err != nil {
@@ -52,6 +58,10 @@ func (s *Service) GetByID(id uuid.UUID) (*Group, error) {
 	return group, nil
 }
 
+// Inserts a group into a database.
+//
+// Returns the UUID of the created group.
+// Might return any sql error
 func (s *Service) Create(group *Group) (uuid.UUID, error) {
 	id, err := s.channel_repo.Create(channel.ChannelTypeGroup)
 	if err != nil {
@@ -61,6 +71,10 @@ func (s *Service) Create(group *Group) (uuid.UUID, error) {
 	return s.group_repo.Create(group)
 
 }
+
+// Adds a the user of the given UUID to the list of subscribed users of the group
+//
+// Might return ErrGroupNotFound or any other sql error
 func (s *Service) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
 	_, err := s.user_repo.GetByID(user_id)
 	if err != nil {
@@ -80,6 +94,10 @@ func (s *Service) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
 
 	return s.group_repo.AddUserToGroup(user_id, group_id)
 }
+
+// Get all the user UUIDs from a group's user list
+//
+// Might return ErrGroupHasNoUsers or any other sql error
 func (s *Service) GetUsers(group_id uuid.UUID) ([]user.User, error) {
 	user_ids, err := s.group_repo.GetUsers(group_id)
 	if err != nil {
@@ -101,6 +119,7 @@ func (s *Service) GetUsers(group_id uuid.UUID) ([]user.User, error) {
 	return users, nil
 }
 
+// Transforms a group DBO to a group model
 func (s *Service) toGroup(group_dbo groupDBO) (*Group, error) {
 	group := &group_dbo
 	users, err := s.GetUsers(group.Id)

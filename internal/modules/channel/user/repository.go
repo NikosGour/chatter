@@ -31,6 +31,9 @@ func NewRepository(db *storage.PostgreSQLStorage, chr channel.Repository) Reposi
 
 type UserDBO = User
 
+// Retrieves all user records from the database.
+//
+// Might return any sql error.
 func (ur *repository) GetAll() ([]User, error) {
 	udbos := []UserDBO{}
 	q := `SELECT id, username, password, date_created
@@ -50,6 +53,9 @@ func (ur *repository) GetAll() ([]User, error) {
 	return us, nil
 }
 
+// Retrieves a user given the UUID.
+//
+// Might return ErrGroupNotFound or any other sql error
 func (ur *repository) GetByID(id uuid.UUID) (*User, error) {
 	udbo := UserDBO{}
 	q := `SELECT id, username, password, date_created
@@ -65,6 +71,10 @@ func (ur *repository) GetByID(id uuid.UUID) (*User, error) {
 	return u, nil
 }
 
+// Inserts a userinto a database.
+//
+// Returns the UUID of the created user.
+// Might return any sql error
 func (ur *repository) Create(user *User) (uuid.UUID, error) {
 	id, err := ur.chr.Create(channel.ChannelTypeUser)
 	if err != nil {

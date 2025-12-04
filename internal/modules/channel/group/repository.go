@@ -34,6 +34,9 @@ func NewRepository(db *storage.PostgreSQLStorage, channel_repo channel.Repositor
 
 type groupDBO = Group
 
+// Retrieves all group records from the database.
+//
+// Might return any sql error.
 func (gr *repository) GetAll() ([]groupDBO, error) {
 	gdbos := []groupDBO{}
 	q := `SELECT id, name, date_created
@@ -47,6 +50,9 @@ func (gr *repository) GetAll() ([]groupDBO, error) {
 	return gdbos, nil
 }
 
+// Retrieves a group given the UUID.
+//
+// Might return ErrGroupNotFound or any other sql error
 func (gr *repository) GetByID(id uuid.UUID) (*groupDBO, error) {
 	gdbo := groupDBO{}
 	q := `SELECT id, name, date_created
@@ -67,6 +73,10 @@ func (gr *repository) GetByID(id uuid.UUID) (*groupDBO, error) {
 	return &gdbo, err
 }
 
+// Inserts a group into a database.
+//
+// Returns the UUID of the created group.
+// Might return any sql error
 func (gr *repository) Create(group *Group) (uuid.UUID, error) {
 	gdbo := group.toDBO()
 	q := `INSERT INTO groups (id, name, date_created)
@@ -88,6 +98,9 @@ func (gr *repository) Create(group *Group) (uuid.UUID, error) {
 	return insert_id, nil
 }
 
+// Adds a the user of the given UUID to the list of subscribed users of the group
+//
+// Might return ErrGroupNotFound or any other sql error
 func (gr *repository) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
 	q := `INSERT INTO group_members (group_id, user_id)
 		  VALUES (:group,:user)`
@@ -103,6 +116,9 @@ func (gr *repository) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) erro
 	return nil
 }
 
+// Get all the user UUIDs from a group's user list
+//
+// Might return ErrGroupHasNoUsers or any other sql error
 func (gr *repository) GetUsers(group_id uuid.UUID) ([]uuid.UUID, error) {
 	user_ids := []uuid.UUID{}
 	q := `SELECT user_id
