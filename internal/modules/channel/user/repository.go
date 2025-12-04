@@ -9,9 +9,13 @@ import (
 )
 
 type Repository interface {
+	// Operations
 	GetAll() ([]User, error)
 	GetByID(id uuid.UUID) (*User, error)
 	Create(user *User) (uuid.UUID, error)
+
+	// Helpers
+	ToUser(udb *UserDBO) *User
 }
 
 type repository struct {
@@ -25,10 +29,10 @@ func NewRepository(db *storage.PostgreSQLStorage, chr channel.Repository) Reposi
 	return ur
 }
 
-type userDBO = User
+type UserDBO = User
 
 func (ur *repository) GetAll() ([]User, error) {
-	udbos := []userDBO{}
+	udbos := []UserDBO{}
 	q := `SELECT id, username, password, date_created
 		  FROM users`
 
@@ -39,7 +43,7 @@ func (ur *repository) GetAll() ([]User, error) {
 
 	us := []User{}
 	for _, udbo := range udbos {
-		u := ur.toUser(&udbo)
+		u := ur.ToUser(&udbo)
 		us = append(us, *u)
 	}
 
@@ -47,7 +51,7 @@ func (ur *repository) GetAll() ([]User, error) {
 }
 
 func (ur *repository) GetByID(id uuid.UUID) (*User, error) {
-	udbo := userDBO{}
+	udbo := UserDBO{}
 	q := `SELECT id, username, password, date_created
 		  FROM users
 	      WHERE id = $1`
@@ -57,7 +61,7 @@ func (ur *repository) GetByID(id uuid.UUID) (*User, error) {
 		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
 	}
 
-	u := ur.toUser(&udbo)
+	u := ur.ToUser(&udbo)
 	return u, nil
 }
 
@@ -69,7 +73,7 @@ func (ur *repository) Create(user *User) (uuid.UUID, error) {
 
 	user.Id = id
 
-	udbo := user.toDBO()
+	udbo := user.ToDBO()
 	q := `INSERT INTO users (id, username, password, date_created)
 		  VALUES (:id, :username, :password, :date_created)
 		  RETURNING id;`
@@ -89,10 +93,10 @@ func (ur *repository) Create(user *User) (uuid.UUID, error) {
 	return insert_id, nil
 }
 
-func (ur *repository) toUser(udb *userDBO) *User {
+func (ur *repository) ToUser(udb *UserDBO) *User {
 	return udb
 }
 
-func (u *User) toDBO() *userDBO {
+func (u *User) ToDBO() *UserDBO {
 	return u
 }

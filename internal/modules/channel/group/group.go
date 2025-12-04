@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	ErrGroupNotFound = errors.New("group not found")
+	ErrGroupNotFound   = errors.New("group not found")
+	ErrGroupHasNoUsers = errors.New("group has no users")
 )
 
 type Group struct {

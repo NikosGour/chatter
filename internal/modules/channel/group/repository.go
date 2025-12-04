@@ -8,6 +8,7 @@ import (
 	"github.com/NikosGour/chatter/internal/modules/channel"
 	"github.com/NikosGour/chatter/internal/modules/channel/user"
 	"github.com/NikosGour/chatter/internal/storage"
+	"github.com/NikosGour/logging/log"
 	"github.com/google/uuid"
 )
 
@@ -16,6 +17,7 @@ type Repository interface {
 	GetByID(id uuid.UUID) (*Group, error)
 	Create(group *Group) (uuid.UUID, error)
 	AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error
+	GetUsers(group_id uuid.UUID) ([]user.User, error)
 }
 
 type repository struct {
@@ -44,7 +46,10 @@ func (gr *repository) GetAll() ([]Group, error) {
 
 	gs := []Group{}
 	for _, gdbo := range gdbos {
-		g := gr.toGroup(&gdbo)
+		g, err := gr.toGroup(&gdbo)
+		if err != nil {
+			return nil, err
+		}
 		gs = append(gs, *g)
 	}
 
@@ -59,10 +64,19 @@ func (gr *repository) GetByID(id uuid.UUID) (*Group, error) {
 
 	err := gr.db.Get(&gdbo, q, id)
 	if err != nil {
-		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrGroupNotFound
+		}
+
+		msg := fmt.Errorf("on q=`%s`,id=`%s`: %w", q, id, err)
+		log.Error("%s", msg)
+		return nil, msg
 	}
 
-	g := gr.toGroup(&gdbo)
+	g, err := gr.toGroup(&gdbo)
+	if err != nil {
+		return nil, err
+	}
 	return g, nil
 }
 
@@ -125,8 +139,46 @@ func (gr *repository) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) erro
 	return nil
 }
 
-func (gr *repository) toGroup(udb *groupDBO) *Group {
-	return udb
+func (gr *repository) GetUsers(group_id uuid.UUID) ([]user.User, error) {
+	user_ids := []uuid.UUID{}
+	q := `SELECT user_id
+		  FROM group_members
+		  where group_id = $1;`
+	err := gr.db.Select(&user_ids, q, group_id.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrGroupHasNoUsers
+		}
+		return nil, err
+	}
+
+	us := []user.User{}
+	for _, user_id := range user_ids {
+		udbo, err := gr.user_repo.GetByID(user_id)
+		if err != nil {
+			if errors.Is(err, user.ErrUserNotFound) {
+				log.Warn("while getting users for group: %s, tried to get missing user: %s", group_id, user_id)
+			}
+			return nil, err
+		}
+		u := gr.user_repo.ToUser(udbo)
+		us = append(us, *u)
+	}
+
+	return us, nil
+}
+
+func (gr *repository) toGroup(udb *groupDBO) (*Group, error) {
+	users, err := gr.GetUsers(udb.Id)
+	if err != nil {
+		if errors.Is(err, ErrGroupHasNoUsers) {
+			users = []user.User{}
+		} else {
+			return nil, err
+		}
+	}
+	udb.Users = users
+	return udb, nil
 }
 
 func (g *Group) toDBO() *groupDBO {

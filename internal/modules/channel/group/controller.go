@@ -55,6 +55,20 @@ func (gc *Controller) GetById(c *fiber.Ctx) error {
 	return c.JSON(g)
 }
 
+func (gc *Controller) GetUsersById(c *fiber.Ctx) error {
+	id, err := common.ParamsParseUUID(c, "id")
+	if err != nil {
+		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
+	}
+
+	us, err := gc.group_repo.GetUsers(id)
+	if err != nil {
+		return common.JSONErr(c, err.Error())
+	}
+
+	return c.JSON(us)
+}
+
 func (gc *Controller) AddUserToGroup(c *fiber.Ctx) error {
 	group_id, err := common.ParamsParseUUID(c, "id")
 	if err != nil {

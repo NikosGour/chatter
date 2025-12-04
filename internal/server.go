@@ -73,6 +73,7 @@ func (s *APIServer) SetupServer() *fiber.App {
 	group.Post("/", s.group_controller.Create)
 	group.Get("/", s.group_controller.GetAll)
 	group.Get("/:id", s.group_controller.GetById)
+	group.Get("/:id/users", s.group_controller.GetUsersById)
 	group.Post("/:id", s.group_controller.AddUserToGroup)
 	return app
 }
