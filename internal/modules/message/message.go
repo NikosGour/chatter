@@ -4,7 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/NikosGour/chatter/internal/modules/channel"
+	"github.com/NikosGour/chatter/internal/common"
+	"github.com/google/uuid"
 )
 
 var (
@@ -12,8 +13,16 @@ var (
 )
 
 type Message struct {
-	Id        int64
-	Sender    channel.Channel
-	Recipient channel.Channel
-	DateSent  time.Time
+	Id        int64     `json:"id,omitempty"`
+	Sender    uuid.UUID `validate:"required" json:"sender_id,omitempty"`
+	Recipient uuid.UUID `validate:"required" json:"recipient_id,omitempty"`
+	DateSent  time.Time `validate:"required" json:"date_sent,omitempty"`
+}
+
+func (m Message) Validate() error {
+	err := common.Validate.Struct(m)
+	if err != nil {
+		return err
+	}
+	return nil
 }

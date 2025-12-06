@@ -14,7 +14,7 @@ import (
 type Repository interface {
 	GetAll() ([]messageDBO, error)
 	GetByID(id int64) (*messageDBO, error)
-	Create(group *messageDBO) (uuid.UUID, error)
+	Create(group *messageDBO) (int64, error)
 }
 
 type repository struct {
@@ -76,21 +76,21 @@ func (mr *repository) GetByID(id int64) (*messageDBO, error) {
 //
 // Returns the id of the created message.
 // Might return any sql error
-func (mr *repository) Create(message_dbo *messageDBO) (uuid.UUID, error) {
-	q := `INSERT INTO messages (name, date_created)
-		  VALUES (:name, :date_created)
+func (mr *repository) Create(message_dbo *messageDBO) (int64, error) {
+	q := `INSERT INTO messages (sender_id, recipient_id, date_sent)
+		  VALUES (:sender_id, :recipient_id, :date_sent)
 		  RETURNING id;`
 
-	insert_id := uuid.Nil
+	insert_id := int64(0)
 	stmt, err := mr.db.PrepareNamed(q)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("On q=`%s`: %w", q, err)
+		return 0, fmt.Errorf("On q=`%s`: %w", q, err)
 	}
 	defer stmt.Close()
 
 	err = stmt.Get(&insert_id, message_dbo)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("On q=`%s`: %w", q, err)
+		return 0, fmt.Errorf("On q=`%s`: %w", q, err)
 	}
 
 	return insert_id, nil

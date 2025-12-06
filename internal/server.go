@@ -5,9 +5,9 @@ import (
 	"github.com/NikosGour/chatter/internal/modules/channel"
 	"github.com/NikosGour/chatter/internal/modules/channel/group"
 	"github.com/NikosGour/chatter/internal/modules/channel/user"
+	"github.com/NikosGour/chatter/internal/modules/message"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/NikosGour/logging/log"
-	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
@@ -16,8 +16,9 @@ type APIServer struct {
 	listening_addr string
 	db             *storage.PostgreSQLStorage
 
-	user_controller  *user.Controller
-	group_controller *group.Controller
+	user_controller    *user.Controller
+	group_controller   *group.Controller
+	message_controller *message.Controller
 }
 
 func NewAPIServer(db *storage.PostgreSQLStorage) *APIServer {
@@ -45,24 +46,24 @@ func (s *APIServer) SetupServer() *fiber.App {
 
 	s.DependencyInjection()
 
-	ws := app.Group("/ws", func(c *fiber.Ctx) error {
-		if !websocket.IsWebSocketUpgrade(c) {
-			return fiber.ErrUpgradeRequired
-		}
+	// ws := app.Group("/ws", func(c *fiber.Ctx) error {
+	// 	if !websocket.IsWebSocketUpgrade(c) {
+	// 		return fiber.ErrUpgradeRequired
+	// 	}
 
-		return c.Next()
-	})
+	// 	return c.Next()
+	// })
 
-	ws.Get("/test", websocket.New(func(c *websocket.Conn) {
-		err := c.WriteMessage(websocket.TextMessage, []byte("nikos"))
-		if err != nil {
-			log.Error("on WriteMessage: %s", err)
-			return
-		}
-		log.Info("Sent")
-	}))
+	// ws.Get("/test", websocket.New(func(c *websocket.Conn) {
+	// 	err := c.WriteMessage(websocket.TextMessage, []byte("nikos"))
+	// 	if err != nil {
+	// 		log.Error("on WriteMessage: %s", err)
+	// 		return
+	// 	}
+	// 	log.Info("Sent")
+	// }))
 
-	ws.Get("/message", func(c *fiber.Ctx) error { return nil })
+	// ws.Get("/message", func(c *fiber.Ctx) error { return nil })
 
 	user := app.Group("/user")
 	user.Post("/", s.user_controller.Create)
@@ -75,6 +76,12 @@ func (s *APIServer) SetupServer() *fiber.App {
 	group.Get("/:id", s.group_controller.GetById)
 	group.Get("/:id/users", s.group_controller.GetUsersById)
 	group.Post("/:id", s.group_controller.AddUserToGroup)
+
+	message := app.Group("/message")
+	message.Post("/", s.message_controller.Create)
+	message.Get("/", s.message_controller.GetAll)
+	message.Get("/:id", s.message_controller.GetById)
+
 	return app
 }
 
@@ -82,11 +89,14 @@ func (s *APIServer) DependencyInjection() {
 	channel_repo := channel.NewRepository(s.db)
 	user_repo := user.NewRepository(s.db)
 	group_repo := group.NewRepository(s.db)
+	message_repo := message.NewRepository(s.db)
 
 	channel_service := channel.NewService(channel_repo)
 	user_service := user.NewService(user_repo)
 	group_service := group.NewService(group_repo, channel_service, user_service)
+	message_service := message.NewService(message_repo)
 
 	s.user_controller = user.NewController(user_service, channel_service)
 	s.group_controller = group.NewController(group_service)
+	s.message_controller = message.NewController(message_service)
 }

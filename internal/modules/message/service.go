@@ -1,9 +1,5 @@
 package message
 
-import (
-	"github.com/google/uuid"
-)
-
 type Service struct {
 	message_repo Repository
 }
@@ -53,7 +49,7 @@ func (s *Service) GetByID(id int64) (*Message, error) {
 //
 // Returns the id of the created message.
 // Might return any sql error
-func (s *Service) Create(message *Message) (uuid.UUID, error) {
+func (s *Service) Create(message *Message) (int64, error) {
 	message_dbo := message.toDBO()
 	return s.message_repo.Create(message_dbo)
 }
@@ -61,19 +57,20 @@ func (s *Service) Create(message *Message) (uuid.UUID, error) {
 // Transforms a message DBO to a message model
 func (s *Service) toMessage(message_dbo messageDBO) (*Message, error) {
 	message := &Message{
-		Id:       message_dbo.Id,
-		DateSent: message_dbo.DateSent,
+		Id:        message_dbo.Id,
+		Sender:    message_dbo.SenderId,
+		Recipient: message_dbo.RecipientId,
+		DateSent:  message_dbo.DateSent,
 	}
 
-	panic("unimplemented")
 	return message, nil
 }
 
 func (m *Message) toDBO() *messageDBO {
 	mdbo := &messageDBO{
 		Id:          m.Id,
-		SenderId:    m.Sender.GetId(),
-		RecipientId: m.Recipient.GetId(),
+		SenderId:    m.Sender,
+		RecipientId: m.Recipient,
 		DateSent:    m.DateSent,
 	}
 	return mdbo
