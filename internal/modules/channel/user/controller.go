@@ -2,15 +2,17 @@ package user
 
 import (
 	"github.com/NikosGour/chatter/internal/common"
+	"github.com/NikosGour/chatter/internal/modules/channel"
 	"github.com/gofiber/fiber/v2"
 )
 
 type Controller struct {
-	user_repo Repository
+	user_service    *Service
+	channel_service *channel.Service
 }
 
-func NewController(user_repo Repository) *Controller {
-	uc := &Controller{user_repo: user_repo}
+func NewController(user_service *Service, channel_service *channel.Service) *Controller {
+	uc := &Controller{user_service: user_service, channel_service: channel_service}
 	return uc
 }
 
@@ -20,7 +22,13 @@ func (uc *Controller) Create(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error())
 	}
 
-	insert_id, err := uc.user_repo.Create(u)
+	id, err := uc.channel_service.Create(channel.ChannelTypeUser)
+	if err != nil {
+		return common.JSONErr(c, err.Error())
+	}
+	u.Id = id
+
+	insert_id, err := uc.user_service.Create(u)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -29,7 +37,7 @@ func (uc *Controller) Create(c *fiber.Ctx) error {
 }
 
 func (uc *Controller) GetAll(c *fiber.Ctx) error {
-	us, err := uc.user_repo.GetAll()
+	us, err := uc.user_service.GetAll()
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -43,7 +51,7 @@ func (uc *Controller) GetById(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
 	}
 
-	u, err := uc.user_repo.GetByID(id)
+	u, err := uc.user_service.GetByID(id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}

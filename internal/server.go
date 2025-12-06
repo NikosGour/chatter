@@ -80,9 +80,13 @@ func (s *APIServer) SetupServer() *fiber.App {
 
 func (s *APIServer) DependencyInjection() {
 	channel_repo := channel.NewRepository(s.db)
-	user_repo := user.NewRepository(s.db, channel_repo)
-	group_repo := group.NewRepository(s.db, channel_repo, user_repo)
-	group_service := group.NewService(group_repo, channel_repo, user_repo)
-	s.user_controller = user.NewController(user_repo)
+	user_repo := user.NewRepository(s.db)
+	group_repo := group.NewRepository(s.db)
+
+	channel_service := channel.NewService(channel_repo)
+	user_service := user.NewService(user_repo)
+	group_service := group.NewService(group_repo, channel_service, user_service)
+
+	s.user_controller = user.NewController(user_service, channel_service)
 	s.group_controller = group.NewController(group_service)
 }

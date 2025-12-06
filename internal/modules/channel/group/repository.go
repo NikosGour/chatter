@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NikosGour/chatter/internal/modules/channel"
-	"github.com/NikosGour/chatter/internal/modules/channel/user"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/NikosGour/logging/log"
 	"github.com/google/uuid"
@@ -15,20 +13,17 @@ import (
 type Repository interface {
 	GetAll() ([]groupDBO, error)
 	GetByID(id uuid.UUID) (*groupDBO, error)
-	Create(group *Group) (uuid.UUID, error)
+	Create(group *groupDBO) (uuid.UUID, error)
 	AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error
 	GetUsers(group_id uuid.UUID) ([]uuid.UUID, error)
 }
 
 type repository struct {
 	db *storage.PostgreSQLStorage
-
-	channel_repo channel.Repository
-	user_repo    user.Repository
 }
 
-func NewRepository(db *storage.PostgreSQLStorage, channel_repo channel.Repository, user_repo user.Repository) Repository {
-	gr := &repository{db: db, channel_repo: channel_repo, user_repo: user_repo}
+func NewRepository(db *storage.PostgreSQLStorage) Repository {
+	gr := &repository{db: db}
 	return gr
 }
 
@@ -77,8 +72,7 @@ func (gr *repository) GetByID(id uuid.UUID) (*groupDBO, error) {
 //
 // Returns the UUID of the created group.
 // Might return any sql error
-func (gr *repository) Create(group *Group) (uuid.UUID, error) {
-	gdbo := group.toDBO()
+func (gr *repository) Create(group *groupDBO) (uuid.UUID, error) {
 	q := `INSERT INTO groups (id, name, date_created)
 		  VALUES (:id, :name, :date_created)
 		  RETURNING id;`
@@ -90,7 +84,7 @@ func (gr *repository) Create(group *Group) (uuid.UUID, error) {
 	}
 	defer stmt.Close()
 
-	err = stmt.Get(&insert_id, gdbo)
+	err = stmt.Get(&insert_id, group)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("On q=`%s`: %w", q, err)
 	}

@@ -3,7 +3,6 @@ package group
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/NikosGour/chatter/internal/modules/channel"
 	"github.com/NikosGour/chatter/internal/modules/channel/user"
@@ -12,13 +11,14 @@ import (
 )
 
 type Service struct {
-	group_repo   Repository
-	channel_repo channel.Repository
-	user_repo    user.Repository
+	group_repo Repository
+
+	channel_service *channel.Service
+	user_service    *user.Service
 }
 
-func NewService(group_repo Repository, channel_repo channel.Repository, user_repo user.Repository) *Service {
-	s := &Service{group_repo: group_repo, channel_repo: channel_repo, user_repo: user_repo}
+func NewService(group_repo Repository, channel_service *channel.Service, user_service *user.Service) *Service {
+	s := &Service{group_repo: group_repo, channel_service: channel_service, user_service: user_service}
 	return s
 }
 
@@ -63,12 +63,13 @@ func (s *Service) GetByID(id uuid.UUID) (*Group, error) {
 // Returns the UUID of the created group.
 // Might return any sql error
 func (s *Service) Create(group *Group) (uuid.UUID, error) {
-	id, err := s.channel_repo.Create(channel.ChannelTypeGroup)
+	id, err := s.channel_service.Create(channel.ChannelTypeGroup)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("On channel create: %w", err)
+		return uuid.Nil, err
 	}
 	group.Id = id
-	return s.group_repo.Create(group)
+	gdbo := group.toDBO()
+	return s.group_repo.Create(gdbo)
 
 }
 
@@ -76,7 +77,7 @@ func (s *Service) Create(group *Group) (uuid.UUID, error) {
 //
 // Might return ErrGroupNotFound or any other sql error
 func (s *Service) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
-	_, err := s.user_repo.GetByID(user_id)
+	_, err := s.user_service.GetByID(user_id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user.ErrUserNotFound
@@ -106,14 +107,14 @@ func (s *Service) GetUsers(group_id uuid.UUID) ([]user.User, error) {
 
 	users := []user.User{}
 	for _, user_id := range user_ids {
-		user_dbo, err := s.user_repo.GetByID(user_id)
+		user_dbo, err := s.user_service.GetByID(user_id)
 		if err != nil {
 			if errors.Is(err, user.ErrUserNotFound) {
 				log.Warn("while getting users for group: %s, tried to get missing user: %s", group_id, user_id)
 			}
 			return nil, err
 		}
-		user := s.user_repo.ToUser(user_dbo)
+		user := s.user_service.ToUser(user_dbo)
 		users = append(users, *user)
 	}
 	return users, nil
