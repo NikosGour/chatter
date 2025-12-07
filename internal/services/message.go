@@ -1,24 +1,29 @@
-package message
+package services
 
-type Service struct {
-	message_repo Repository
+import (
+	"github.com/NikosGour/chatter/internal/models"
+	"github.com/NikosGour/chatter/internal/repositories"
+)
+
+type MessageService struct {
+	message_repo repositories.MessageRepository
 }
 
-func NewService(message_repo Repository) *Service {
-	s := &Service{message_repo: message_repo}
+func NewMessageService(message_repo repositories.MessageRepository) *MessageService {
+	s := &MessageService{message_repo: message_repo}
 	return s
 }
 
 // Retrieves all message records from the database.
 //
 // Might return any sql error.
-func (s *Service) GetAll() ([]Message, error) {
+func (s *MessageService) GetAll() ([]models.Message, error) {
 	message_dbos, err := s.message_repo.GetAll()
 	if err != nil {
 		return nil, err
 	}
 
-	messages := []Message{}
+	messages := []models.Message{}
 	for _, message_dbo := range message_dbos {
 		message, err := s.toMessage(message_dbo)
 		if err != nil {
@@ -32,7 +37,7 @@ func (s *Service) GetAll() ([]Message, error) {
 // Retrieves a message given the id.
 //
 // Might return ErrGroupNotFound or any other sql error
-func (s *Service) GetByID(id int64) (*Message, error) {
+func (s *MessageService) GetByID(id int64) (*models.Message, error) {
 	message_dbo, err := s.message_repo.GetByID(id)
 	if err != nil {
 		return nil, err
@@ -49,14 +54,14 @@ func (s *Service) GetByID(id int64) (*Message, error) {
 //
 // Returns the id of the created message.
 // Might return any sql error
-func (s *Service) Create(message *Message) (int64, error) {
-	message_dbo := message.toDBO()
+func (s *MessageService) Create(message *models.Message) (int64, error) {
+	message_dbo := messageToDBO(message)
 	return s.message_repo.Create(message_dbo)
 }
 
 // Transforms a message DBO to a message model
-func (s *Service) toMessage(message_dbo messageDBO) (*Message, error) {
-	message := &Message{
+func (s *MessageService) toMessage(message_dbo repositories.MessageDBO) (*models.Message, error) {
+	message := &models.Message{
 		Id:        message_dbo.Id,
 		Sender:    message_dbo.SenderId,
 		Recipient: message_dbo.RecipientId,
@@ -66,8 +71,8 @@ func (s *Service) toMessage(message_dbo messageDBO) (*Message, error) {
 	return message, nil
 }
 
-func (m *Message) toDBO() *messageDBO {
-	mdbo := &messageDBO{
+func messageToDBO(m *models.Message) *repositories.MessageDBO {
+	mdbo := &repositories.MessageDBO{
 		Id:          m.Id,
 		SenderId:    m.Sender,
 		RecipientId: m.Recipient,

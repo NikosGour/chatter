@@ -1,34 +1,35 @@
-package user
+package repositories
 
 import (
 	"fmt"
 
+	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/google/uuid"
 )
 
-type Repository interface {
-	GetAll() ([]userDBO, error)
-	GetByID(id uuid.UUID) (*userDBO, error)
-	Create(user *userDBO) (uuid.UUID, error)
+type UserRepository interface {
+	GetAll() ([]UserDBO, error)
+	GetByID(id uuid.UUID) (*UserDBO, error)
+	Create(user *UserDBO) (uuid.UUID, error)
 }
 
-type repository struct {
+type userRepository struct {
 	db *storage.PostgreSQLStorage
 }
 
-func NewRepository(db *storage.PostgreSQLStorage) Repository {
-	ur := &repository{db: db}
+func NewUserRepository(db *storage.PostgreSQLStorage) UserRepository {
+	ur := &userRepository{db: db}
 	return ur
 }
 
-type userDBO = User
+type UserDBO = models.User
 
 // Retrieves all user records from the database.
 //
 // Might return any sql error.
-func (ur *repository) GetAll() ([]User, error) {
-	udbos := []userDBO{}
+func (ur *userRepository) GetAll() ([]UserDBO, error) {
+	udbos := []UserDBO{}
 	q := `SELECT id, username, password, date_created
 		  FROM users`
 
@@ -42,8 +43,8 @@ func (ur *repository) GetAll() ([]User, error) {
 // Retrieves a user given the UUID.
 //
 // Might return ErrGroupNotFound or any other sql error
-func (ur *repository) GetByID(id uuid.UUID) (*User, error) {
-	udbo := userDBO{}
+func (ur *userRepository) GetByID(id uuid.UUID) (*UserDBO, error) {
+	udbo := UserDBO{}
 	q := `SELECT id, username, password, date_created
 		  FROM users
 	      WHERE id = $1`
@@ -60,7 +61,7 @@ func (ur *repository) GetByID(id uuid.UUID) (*User, error) {
 //
 // Returns the UUID of the created user.
 // Might return any sql error
-func (ur *repository) Create(user *userDBO) (uuid.UUID, error) {
+func (ur *userRepository) Create(user *UserDBO) (uuid.UUID, error) {
 	q := `INSERT INTO users (id, username, password, date_created)
 		  VALUES (:id, :username, :password, :date_created)
 		  RETURNING id;`

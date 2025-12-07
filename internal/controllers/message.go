@@ -1,21 +1,23 @@
-package message
+package controllers
 
 import (
 	"github.com/NikosGour/chatter/internal/common"
+	"github.com/NikosGour/chatter/internal/models"
+	"github.com/NikosGour/chatter/internal/services"
 	"github.com/gofiber/fiber/v2"
 )
 
-type Controller struct {
-	message_service *Service
+type MessageController struct {
+	message_service *services.MessageService
 }
 
-func NewController(message_service *Service) *Controller {
-	uc := &Controller{message_service: message_service}
+func NewMessageController(message_service *services.MessageService) *MessageController {
+	uc := &MessageController{message_service: message_service}
 	return uc
 }
 
-func (mc *Controller) Create(c *fiber.Ctx) error {
-	m, err := common.BodyParse[Message](c)
+func (mc *MessageController) Create(c *fiber.Ctx) error {
+	m, err := common.BodyParse[models.Message](c)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -28,7 +30,7 @@ func (mc *Controller) Create(c *fiber.Ctx) error {
 	return c.JSON(insert_id)
 }
 
-func (mc *Controller) GetAll(c *fiber.Ctx) error {
+func (mc *MessageController) GetAll(c *fiber.Ctx) error {
 	messages, err := mc.message_service.GetAll()
 	if err != nil {
 		return common.JSONErr(c, err.Error())
@@ -37,7 +39,7 @@ func (mc *Controller) GetAll(c *fiber.Ctx) error {
 	return c.JSON(messages)
 }
 
-func (mc *Controller) GetById(c *fiber.Ctx) error {
+func (mc *MessageController) GetById(c *fiber.Ctx) error {
 	id, err := common.ParamsParseInt(c, "id")
 	if err != nil {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)

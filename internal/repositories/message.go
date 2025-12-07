@@ -1,4 +1,4 @@
-package message
+package repositories
 
 import (
 	"database/sql"
@@ -6,27 +6,28 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/NikosGour/logging/log"
 	"github.com/google/uuid"
 )
 
-type Repository interface {
-	GetAll() ([]messageDBO, error)
-	GetByID(id int64) (*messageDBO, error)
-	Create(group *messageDBO) (int64, error)
+type MessageRepository interface {
+	GetAll() ([]MessageDBO, error)
+	GetByID(id int64) (*MessageDBO, error)
+	Create(group *MessageDBO) (int64, error)
 }
 
-type repository struct {
+type messageRepository struct {
 	db *storage.PostgreSQLStorage
 }
 
-func NewRepository(db *storage.PostgreSQLStorage) Repository {
-	mr := &repository{db: db}
+func NewMessageRepository(db *storage.PostgreSQLStorage) MessageRepository {
+	mr := &messageRepository{db: db}
 	return mr
 }
 
-type messageDBO struct {
+type MessageDBO struct {
 	Id          int64     `db:"id"`
 	SenderId    uuid.UUID `db:"sender_id"`
 	RecipientId uuid.UUID `db:"recipient_id"`
@@ -36,8 +37,8 @@ type messageDBO struct {
 // Retrieves all message records from the database.
 //
 // Might return any sql error.
-func (mr *repository) GetAll() ([]messageDBO, error) {
-	mdbos := []messageDBO{}
+func (mr *messageRepository) GetAll() ([]MessageDBO, error) {
+	mdbos := []MessageDBO{}
 	q := `SELECT id, sender_id, recipient_id, date_sent
 		  FROM messages`
 
@@ -52,8 +53,8 @@ func (mr *repository) GetAll() ([]messageDBO, error) {
 // Retrieves a message given the id.
 //
 // Might return ErrGroupNotFound or any other sql error
-func (mr *repository) GetByID(id int64) (*messageDBO, error) {
-	mdbo := messageDBO{}
+func (mr *messageRepository) GetByID(id int64) (*MessageDBO, error) {
+	mdbo := MessageDBO{}
 	q := `SELECT id, sender_id, recipient_id, date_sent
 		  FROM messages
 	      WHERE id = $1`
@@ -61,7 +62,7 @@ func (mr *repository) GetByID(id int64) (*messageDBO, error) {
 	err := mr.db.Get(&mdbo, q, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrMessageNotFound
+			return nil, models.ErrMessageNotFound
 		}
 
 		msg := fmt.Errorf("on q=`%s`,id=`%s`: %w", q, id, err)
@@ -76,7 +77,7 @@ func (mr *repository) GetByID(id int64) (*messageDBO, error) {
 //
 // Returns the id of the created message.
 // Might return any sql error
-func (mr *repository) Create(message_dbo *messageDBO) (int64, error) {
+func (mr *messageRepository) Create(message_dbo *MessageDBO) (int64, error) {
 	q := `INSERT INTO messages (sender_id, recipient_id, date_sent)
 		  VALUES (:sender_id, :recipient_id, :date_sent)
 		  RETURNING id;`

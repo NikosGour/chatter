@@ -1,48 +1,43 @@
-package channel
+package repositories
 
 import (
 	"fmt"
 
+	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/google/uuid"
 )
 
-type Repository interface {
-	GetAll() ([]channelDBO, error)
-	GetByID(id uuid.UUID) (*channelDBO, error)
-	Create(id uuid.UUID, chtype ChannelType) (uuid.UUID, error)
+type ChannelDBO = models.Channel
+
+type ChannelRepository interface {
+	GetAll() ([]ChannelDBO, error)
+	GetByID(id uuid.UUID) (*ChannelDBO, error)
+	Create(chdbo *ChannelDBO) (uuid.UUID, error)
 }
 
-type repository struct {
+type channelRepository struct {
 	db *storage.PostgreSQLStorage
 }
 
-func NewRepository(db *storage.PostgreSQLStorage) Repository {
-	chr := &repository{db: db}
+func NewChannelRepository(db *storage.PostgreSQLStorage) ChannelRepository {
+	chr := &channelRepository{db: db}
 	return chr
 }
-
-type channelDBO struct {
-	Id          uuid.UUID   `db:"id"`
-	ChannelType ChannelType `db:"channel_type"`
-}
-
-func (chr *repository) GetAll() ([]channelDBO, error) {
-	chdbos := []channelDBO{}
-	q := `SELECT id, channel_type 
+func (chr *channelRepository) GetAll() ([]ChannelDBO, error) {
+	chdbos := []ChannelDBO{}
+	q := `SELECT id, channel_type
 		  FROM channels`
 
 	err := chr.db.Select(&chdbos, q)
 	if err != nil {
 		return nil, err
 	}
-
 	return chdbos, nil
 }
-
-func (chr *repository) GetByID(id uuid.UUID) (*channelDBO, error) {
-	chdbo := channelDBO{}
-	q := `SELECT id, channel_type 
+func (chr *channelRepository) GetByID(id uuid.UUID) (*ChannelDBO, error) {
+	chdbo := ChannelDBO{}
+	q := `SELECT id, channel_type
 		  FROM channels 
 	      WHERE id = $1`
 
@@ -54,16 +49,10 @@ func (chr *repository) GetByID(id uuid.UUID) (*channelDBO, error) {
 	return &chdbo, nil
 }
 
-func (chr *repository) Create(id uuid.UUID, chtype ChannelType) (uuid.UUID, error) {
-	chdbo := channelDBO{
-		Id:          id,
-		ChannelType: chtype,
-	}
-
+func (chr *channelRepository) Create(chdbo *ChannelDBO) (uuid.UUID, error) {
 	q := `INSERT INTO channels (id, channel_type)
 		  VALUES (:id, :channel_type)
 		  RETURNING id;`
-
 	insert_id := uuid.Nil
 	stmt, err := chr.db.PrepareNamed(q)
 	if err != nil {
@@ -75,6 +64,5 @@ func (chr *repository) Create(id uuid.UUID, chtype ChannelType) (uuid.UUID, erro
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("On q=`%s`: %w", q, err)
 	}
-
 	return insert_id, nil
 }

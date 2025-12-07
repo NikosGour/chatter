@@ -1,32 +1,26 @@
-package user
+package controllers
 
 import (
 	"github.com/NikosGour/chatter/internal/common"
-	"github.com/NikosGour/chatter/internal/modules/channel"
+	"github.com/NikosGour/chatter/internal/models"
+	"github.com/NikosGour/chatter/internal/services"
 	"github.com/gofiber/fiber/v2"
 )
 
-type Controller struct {
-	user_service    *Service
-	channel_service *channel.Service
+type UserController struct {
+	user_service *services.UserService
 }
 
-func NewController(user_service *Service, channel_service *channel.Service) *Controller {
-	uc := &Controller{user_service: user_service, channel_service: channel_service}
+func NewUserController(user_service *services.UserService) *UserController {
+	uc := &UserController{user_service: user_service}
 	return uc
 }
 
-func (uc *Controller) Create(c *fiber.Ctx) error {
-	u, err := common.BodyParse[User](c)
+func (uc *UserController) Create(c *fiber.Ctx) error {
+	u, err := common.BodyParse[models.User](c)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
-
-	id, err := uc.channel_service.Create(channel.ChannelTypeUser)
-	if err != nil {
-		return common.JSONErr(c, err.Error())
-	}
-	u.Id = id
 
 	insert_id, err := uc.user_service.Create(u)
 	if err != nil {
@@ -36,7 +30,7 @@ func (uc *Controller) Create(c *fiber.Ctx) error {
 	return c.JSON(insert_id)
 }
 
-func (uc *Controller) GetAll(c *fiber.Ctx) error {
+func (uc *UserController) GetAll(c *fiber.Ctx) error {
 	us, err := uc.user_service.GetAll()
 	if err != nil {
 		return common.JSONErr(c, err.Error())
@@ -45,7 +39,7 @@ func (uc *Controller) GetAll(c *fiber.Ctx) error {
 	return c.JSON(us)
 }
 
-func (uc *Controller) GetById(c *fiber.Ctx) error {
+func (uc *UserController) GetById(c *fiber.Ctx) error {
 	id, err := common.ParamsParseUUID(c, "id")
 	if err != nil {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)

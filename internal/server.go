@@ -2,10 +2,9 @@ package internal
 
 import (
 	"github.com/NikosGour/chatter/internal/common"
-	"github.com/NikosGour/chatter/internal/modules/channel"
-	"github.com/NikosGour/chatter/internal/modules/channel/group"
-	"github.com/NikosGour/chatter/internal/modules/channel/user"
-	"github.com/NikosGour/chatter/internal/modules/message"
+	"github.com/NikosGour/chatter/internal/controllers"
+	"github.com/NikosGour/chatter/internal/repositories"
+	"github.com/NikosGour/chatter/internal/services"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/NikosGour/logging/log"
 	"github.com/gofiber/fiber/v2"
@@ -16,9 +15,9 @@ type APIServer struct {
 	listening_addr string
 	db             *storage.PostgreSQLStorage
 
-	user_controller    *user.Controller
-	group_controller   *group.Controller
-	message_controller *message.Controller
+	user_controller    *controllers.UserController
+	group_controller   *controllers.GroupController
+	message_controller *controllers.MessageController
 }
 
 func NewAPIServer(db *storage.PostgreSQLStorage) *APIServer {
@@ -86,17 +85,18 @@ func (s *APIServer) SetupServer() *fiber.App {
 }
 
 func (s *APIServer) DependencyInjection() {
-	channel_repo := channel.NewRepository(s.db)
-	user_repo := user.NewRepository(s.db)
-	group_repo := group.NewRepository(s.db)
-	message_repo := message.NewRepository(s.db)
 
-	channel_service := channel.NewService(channel_repo)
-	user_service := user.NewService(user_repo)
-	group_service := group.NewService(group_repo, channel_service, user_service)
-	message_service := message.NewService(message_repo)
+	user_repo := repositories.NewUserRepository(s.db)
+	group_repo := repositories.NewGroupRepository(s.db)
+	message_repo := repositories.NewMessageRepository(s.db)
+	channel_repo := repositories.NewChannelRepository(s.db)
 
-	s.user_controller = user.NewController(user_service, channel_service)
-	s.group_controller = group.NewController(group_service)
-	s.message_controller = message.NewController(message_service)
+	channel_service := services.NewUUIDGenerator(channel_repo)
+	user_service := services.NewUserService(user_repo, channel_service)
+	group_service := services.NewGroupService(group_repo, channel_service, user_service)
+	message_service := services.NewMessageService(message_repo)
+
+	s.user_controller = controllers.NewUserController(user_service)
+	s.group_controller = controllers.NewGroupController(group_service)
+	s.message_controller = controllers.NewMessageController(message_service)
 }

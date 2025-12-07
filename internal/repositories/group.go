@@ -1,39 +1,40 @@
-package group
+package repositories
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
 
+	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/NikosGour/logging/log"
 	"github.com/google/uuid"
 )
 
-type Repository interface {
-	GetAll() ([]groupDBO, error)
-	GetByID(id uuid.UUID) (*groupDBO, error)
-	Create(group *groupDBO) (uuid.UUID, error)
+type GroupRepository interface {
+	GetAll() ([]GroupDBO, error)
+	GetByID(id uuid.UUID) (*GroupDBO, error)
+	Create(group *GroupDBO) (uuid.UUID, error)
 	AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error
 	GetUsers(group_id uuid.UUID) ([]uuid.UUID, error)
 }
 
-type repository struct {
+type groupRepository struct {
 	db *storage.PostgreSQLStorage
 }
 
-func NewRepository(db *storage.PostgreSQLStorage) Repository {
-	gr := &repository{db: db}
+func NewGroupRepository(db *storage.PostgreSQLStorage) GroupRepository {
+	gr := &groupRepository{db: db}
 	return gr
 }
 
-type groupDBO = Group
+type GroupDBO = models.Group
 
 // Retrieves all group records from the database.
 //
 // Might return any sql error.
-func (gr *repository) GetAll() ([]groupDBO, error) {
-	gdbos := []groupDBO{}
+func (gr *groupRepository) GetAll() ([]GroupDBO, error) {
+	gdbos := []GroupDBO{}
 	q := `SELECT id, name, date_created
 	      FROM groups`
 
@@ -48,8 +49,8 @@ func (gr *repository) GetAll() ([]groupDBO, error) {
 // Retrieves a group given the UUID.
 //
 // Might return ErrGroupNotFound or any other sql error
-func (gr *repository) GetByID(id uuid.UUID) (*groupDBO, error) {
-	gdbo := groupDBO{}
+func (gr *groupRepository) GetByID(id uuid.UUID) (*GroupDBO, error) {
+	gdbo := GroupDBO{}
 	q := `SELECT id, name, date_created
 		  FROM groups
 	      WHERE id = $1`
@@ -57,7 +58,7 @@ func (gr *repository) GetByID(id uuid.UUID) (*groupDBO, error) {
 	err := gr.db.Get(&gdbo, q, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrGroupNotFound
+			return nil, models.ErrGroupNotFound
 		}
 
 		msg := fmt.Errorf("on q=`%s`,id=`%s`: %w", q, id, err)
@@ -72,7 +73,7 @@ func (gr *repository) GetByID(id uuid.UUID) (*groupDBO, error) {
 //
 // Returns the UUID of the created group.
 // Might return any sql error
-func (gr *repository) Create(group *groupDBO) (uuid.UUID, error) {
+func (gr *groupRepository) Create(group *GroupDBO) (uuid.UUID, error) {
 	q := `INSERT INTO groups (id, name, date_created)
 		  VALUES (:id, :name, :date_created)
 		  RETURNING id;`
@@ -95,7 +96,7 @@ func (gr *repository) Create(group *groupDBO) (uuid.UUID, error) {
 // Adds a the user of the given UUID to the list of subscribed users of the group
 //
 // Might return ErrGroupNotFound or any other sql error
-func (gr *repository) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
+func (gr *groupRepository) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
 	q := `INSERT INTO group_members (group_id, user_id)
 		  VALUES (:group,:user)`
 
@@ -113,7 +114,7 @@ func (gr *repository) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) erro
 // Get all the user UUIDs from a group's user list
 //
 // Might return ErrGroupHasNoUsers or any other sql error
-func (gr *repository) GetUsers(group_id uuid.UUID) ([]uuid.UUID, error) {
+func (gr *groupRepository) GetUsers(group_id uuid.UUID) ([]uuid.UUID, error) {
 	user_ids := []uuid.UUID{}
 	q := `SELECT user_id
 		  FROM group_members
@@ -121,7 +122,7 @@ func (gr *repository) GetUsers(group_id uuid.UUID) ([]uuid.UUID, error) {
 	err := gr.db.Select(&user_ids, q, group_id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrGroupHasNoUsers
+			return nil, models.ErrGroupHasNoUsers
 		}
 		return nil, err
 	}

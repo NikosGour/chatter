@@ -1,11 +1,10 @@
-package group
+package models
 
 import (
 	"errors"
 	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
-	"github.com/NikosGour/chatter/internal/modules/channel/user"
 	"github.com/google/uuid"
 )
 
@@ -15,10 +14,10 @@ var (
 )
 
 type Group struct {
-	Id          uuid.UUID   `json:"id,omitempty" db:"id"`
-	Name        string      `validate:"required" json:"name,omitempty" db:"name"`
-	Users       []user.User `json:"users,omitempty" db:"users"`
-	DateCreated time.Time   `validate:"required" json:"date_created,omitempty" db:"date_created"`
+	Id          uuid.UUID `json:"id,omitempty" db:"id"`
+	Name        string    `validate:"required" json:"name,omitempty" db:"name"`
+	Users       []User    `json:"users,omitempty" db:"users"`
+	DateCreated time.Time `validate:"required" json:"date_created,omitempty" db:"date_created"`
 }
 
 func (g *Group) GetId() uuid.UUID {
