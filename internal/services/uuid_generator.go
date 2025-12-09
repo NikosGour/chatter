@@ -19,7 +19,7 @@ func NewUUIDGenerator(channel_repo repositories.ChannelRepository) *ChannelServi
 }
 
 func (s *ChannelService) Create(chtype models.ChannelType) (uuid.UUID, error) {
-	id, _ := uuid.Parse("be94832d-eb57-4214-a07b-647c5e64684f") //uuid.New()
+	id := uuid.New()
 
 	for {
 		ch, err := s.channel_repo.GetByID(id)

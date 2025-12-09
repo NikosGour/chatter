@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
-	"github.com/google/uuid"
 )
 
 var (
@@ -14,8 +13,9 @@ var (
 
 type Message struct {
 	Id        int64     `json:"id,omitempty"`
-	Sender    uuid.UUID `validate:"required" json:"sender_id,omitempty"`
-	Recipient uuid.UUID `validate:"required" json:"recipient_id,omitempty"`
+	Text      string    `json:"text"`
+	Sender    Channel   `validate:"required" json:"sender_id,omitempty"`
+	Recipient Channel   `validate:"required" json:"recipient_id,omitempty"`
 	DateSent  time.Time `validate:"required" json:"date_sent,omitempty"`
 }
 

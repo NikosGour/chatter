@@ -23,6 +23,9 @@ type Group struct {
 func (g *Group) GetId() uuid.UUID {
 	return g.Id
 }
+func (g *Group) GetName() string {
+	return g.Name
+}
 
 func (g Group) Validate() error {
 	err := common.Validate.Struct(g)

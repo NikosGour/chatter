@@ -22,6 +22,9 @@ type User struct {
 func (u *User) GetId() uuid.UUID {
 	return u.Id
 }
+func (u *User) GetName() string {
+	return u.Username
+}
 
 func (u User) Validate() error {
 	err := common.Validate.Struct(u)

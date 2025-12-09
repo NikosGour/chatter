@@ -8,7 +8,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type ChannelDBO = models.Channel
+type ChannelDBO struct {
+	Id          uuid.UUID          `validate:"required" db:"id"`
+	ChannelType models.ChannelType `db:"channel_type"`
+}
 
 type ChannelRepository interface {
 	GetAll() ([]ChannelDBO, error)

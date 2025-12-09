@@ -29,6 +29,7 @@ func NewMessageRepository(db *storage.PostgreSQLStorage) MessageRepository {
 
 type MessageDBO struct {
 	Id          int64     `db:"id"`
+	Text        string    `db:"text"`
 	SenderId    uuid.UUID `db:"sender_id"`
 	RecipientId uuid.UUID `db:"recipient_id"`
 	DateSent    time.Time `db:"date_sent"`
@@ -39,7 +40,7 @@ type MessageDBO struct {
 // Might return any sql error.
 func (mr *messageRepository) GetAll() ([]MessageDBO, error) {
 	mdbos := []MessageDBO{}
-	q := `SELECT id, sender_id, recipient_id, date_sent
+	q := `SELECT id, "text", sender_id, recipient_id, date_sent
 		  FROM messages`
 
 	err := mr.db.Select(&mdbos, q)
@@ -55,7 +56,7 @@ func (mr *messageRepository) GetAll() ([]MessageDBO, error) {
 // Might return ErrGroupNotFound or any other sql error
 func (mr *messageRepository) GetByID(id int64) (*MessageDBO, error) {
 	mdbo := MessageDBO{}
-	q := `SELECT id, sender_id, recipient_id, date_sent
+	q := `SELECT id, "text", sender_id, recipient_id, date_sent
 		  FROM messages
 	      WHERE id = $1`
 
@@ -65,7 +66,7 @@ func (mr *messageRepository) GetByID(id int64) (*MessageDBO, error) {
 			return nil, models.ErrMessageNotFound
 		}
 
-		msg := fmt.Errorf("on q=`%s`,id=`%s`: %w", q, id, err)
+		msg := fmt.Errorf("on q=`%s`,id=`%d`: %w", q, id, err)
 		log.Error("%s", msg)
 		return nil, msg
 	}
@@ -78,8 +79,8 @@ func (mr *messageRepository) GetByID(id int64) (*MessageDBO, error) {
 // Returns the id of the created message.
 // Might return any sql error
 func (mr *messageRepository) Create(message_dbo *MessageDBO) (int64, error) {
-	q := `INSERT INTO messages (sender_id, recipient_id, date_sent)
-		  VALUES (:sender_id, :recipient_id, :date_sent)
+	q := `INSERT INTO messages ("text", sender_id, recipient_id, date_sent)
+		  VALUES (:text, :sender_id, :recipient_id, :date_sent)
 		  RETURNING id;`
 
 	insert_id := int64(0)

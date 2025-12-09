@@ -1,13 +1,18 @@
 package internal
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/NikosGour/chatter/internal/common"
 	"github.com/NikosGour/chatter/internal/controllers"
 	"github.com/NikosGour/chatter/internal/repositories"
 	"github.com/NikosGour/chatter/internal/services"
 	"github.com/NikosGour/chatter/internal/storage"
 	"github.com/NikosGour/logging/log"
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
@@ -39,30 +44,55 @@ func (s *APIServer) Start() {
 func (s *APIServer) SetupServer() *fiber.App {
 	app := fiber.New()
 
+	app.Use(cors.New())
 	app.Use(logger.New(logger.Config{
 		Format: "${time} | ${status} | ${latency} | ${ip} | ${method} | ${path} | Params: ${queryParams} | ReqBody: ${body} | ResBody: ${resBody} | ${error}\n",
 	}))
 
 	s.DependencyInjection()
 
-	// ws := app.Group("/ws", func(c *fiber.Ctx) error {
-	// 	if !websocket.IsWebSocketUpgrade(c) {
-	// 		return fiber.ErrUpgradeRequired
-	// 	}
+	ws := app.Group("/ws", func(c *fiber.Ctx) error {
+		if !websocket.IsWebSocketUpgrade(c) {
+			return fiber.ErrUpgradeRequired
+		}
 
-	// 	return c.Next()
-	// })
+		return c.Next()
+	})
 
-	// ws.Get("/test", websocket.New(func(c *websocket.Conn) {
-	// 	err := c.WriteMessage(websocket.TextMessage, []byte("nikos"))
-	// 	if err != nil {
-	// 		log.Error("on WriteMessage: %s", err)
-	// 		return
-	// 	}
-	// 	log.Info("Sent")
-	// }))
+	ws.Get("/test", websocket.New(func(c *websocket.Conn) {
+		err := c.WriteMessage(websocket.TextMessage, []byte("nikos"))
+		if err != nil {
+			log.Error("on WriteMessage: %s", err)
+			return
+		}
+		log.Info("Sent")
+	}))
 
-	// ws.Get("/message", func(c *fiber.Ctx) error { return nil })
+	ws.Get("/messages", websocket.New(func(c *websocket.Conn) {
+		go func() {
+			ticker := time.NewTicker(2 * time.Second)
+			for range ticker.C {
+				err := c.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Time is: %s", time.Now())))
+				if err != nil {
+					log.Error("failed on write: %s", err)
+					return
+				}
+			}
+		}()
+
+		for {
+			mt, data, err := c.ReadMessage()
+			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Error("closed socket")
+					return
+				}
+			}
+			if mt != 0 {
+				log.Debug("mt: %#v ,data: %#v", mt, data)
+			}
+		}
+	}))
 
 	user := app.Group("/user")
 	user.Post("/", s.user_controller.Create)

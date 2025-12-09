@@ -7,6 +7,8 @@ import (
 
 type MessageService struct {
 	message_repo repositories.MessageRepository
+
+	channel_service ChannelService
 }
 
 func NewMessageService(message_repo repositories.MessageRepository) *MessageService {
@@ -62,10 +64,9 @@ func (s *MessageService) Create(message *models.Message) (int64, error) {
 // Transforms a message DBO to a message model
 func (s *MessageService) toMessage(message_dbo repositories.MessageDBO) (*models.Message, error) {
 	message := &models.Message{
-		Id:        message_dbo.Id,
-		Sender:    message_dbo.SenderId,
-		Recipient: message_dbo.RecipientId,
-		DateSent:  message_dbo.DateSent,
+		Id:       message_dbo.Id,
+		Text:     message_dbo.Text,
+		DateSent: message_dbo.DateSent,
 	}
 
 	return message, nil
@@ -74,8 +75,9 @@ func (s *MessageService) toMessage(message_dbo repositories.MessageDBO) (*models
 func messageToDBO(m *models.Message) *repositories.MessageDBO {
 	mdbo := &repositories.MessageDBO{
 		Id:          m.Id,
-		SenderId:    m.Sender,
-		RecipientId: m.Recipient,
+		Text:        m.Text,
+		SenderId:    m.Sender.GetId(),
+		RecipientId: m.Recipient.GetId(),
 		DateSent:    m.DateSent,
 	}
 	return mdbo
