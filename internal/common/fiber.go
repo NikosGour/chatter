@@ -39,7 +39,11 @@ func BodyParse[T Validater](c *fiber.Ctx) (*T, error) {
 	return v, nil
 }
 
-func ParamsParseInt(c *fiber.Ctx, field string) (int, error) {
+type Ctx interface {
+	Params(key string, defaultValue ...string) string
+}
+
+func ParamsParseInt(c Ctx, field string) (int, error) {
 	_v := c.Params(field)
 	if _v == "" {
 		msg := fmt.Errorf("No %s was provided", field)
@@ -57,7 +61,7 @@ func ParamsParseInt(c *fiber.Ctx, field string) (int, error) {
 	return v, nil
 }
 
-func ParamsParseUUID(c *fiber.Ctx, field string) (uuid.UUID, error) {
+func ParamsParseUUID(c Ctx, field string) (uuid.UUID, error) {
 	_v := c.Params(field)
 	if _v == "" {
 		msg := fmt.Errorf("no %s was provided", field)

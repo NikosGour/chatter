@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
+	"github.com/google/uuid"
 )
 
 var (
@@ -25,4 +26,12 @@ func (m Message) Validate() error {
 		return err
 	}
 	return nil
+}
+
+type MessageDTO struct {
+	Id        int64     `json:"id,omitempty"`
+	Text      string    `json:"text"`
+	Sender    uuid.UUID `validate:"required" json:"sender_id,omitempty"`
+	Recipient uuid.UUID `validate:"required" json:"recipient_id,omitempty"`
+	DateSent  time.Time `validate:"required" json:"date_sent,omitempty"`
 }

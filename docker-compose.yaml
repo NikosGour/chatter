@@ -1,3 +1,4 @@
+name: chatter
 services:
     database:
         image: postgres:latest

@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
 	"github.com/NikosGour/chatter/internal/controllers"
@@ -14,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/google/uuid"
 )
 
 type APIServer struct {
@@ -23,6 +23,8 @@ type APIServer struct {
 	user_controller    *controllers.UserController
 	group_controller   *controllers.GroupController
 	message_controller *controllers.MessageController
+
+	conn_manager *services.ConnManager
 }
 
 func NewAPIServer(db *storage.PostgreSQLStorage) *APIServer {
@@ -60,7 +62,14 @@ func (s *APIServer) SetupServer() *fiber.App {
 	})
 
 	ws.Get("/test", websocket.New(func(c *websocket.Conn) {
+
 		err := c.WriteMessage(websocket.TextMessage, []byte("nikos"))
+		if err != nil {
+			log.Error("on WriteMessage: %s", err)
+			return
+		}
+
+		err = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "nikos"))
 		if err != nil {
 			log.Error("on WriteMessage: %s", err)
 			return
@@ -69,29 +78,29 @@ func (s *APIServer) SetupServer() *fiber.App {
 	}))
 
 	ws.Get("/messages", websocket.New(func(c *websocket.Conn) {
-		go func() {
-			ticker := time.NewTicker(2 * time.Second)
-			for range ticker.C {
-				err := c.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Time is: %s", time.Now())))
-				if err != nil {
-					log.Error("failed on write: %s", err)
-					return
-				}
+
+		defer func() {
+			err := c.Close()
+			if err != nil {
+				log.Warn("on conn close path: /ws/messages got error: %s", err)
 			}
 		}()
 
-		for {
-			mt, data, err := c.ReadMessage()
+		_id := c.Query("uid")
+		id, err := uuid.Parse(_id)
+		if err != nil {
+			log.Error("%s", err)
+			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, fmt.Sprintf("uid param is not a valid uuid: `%s`", _id)))
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Error("closed socket")
-					return
-				}
+				log.Error("couldn't inform the client of malformed uuid: %s", err)
 			}
-			if mt != 0 {
-				log.Debug("mt: %#v ,data: %#v", mt, data)
-			}
+			return
 		}
+
+		s.conn_manager.AddClient(id, c)
+		defer s.conn_manager.RemoveClient(id)
+
+		s.conn_manager.ClientReadIncoming(id)
 	}))
 
 	user := app.Group("/user")
@@ -125,6 +134,9 @@ func (s *APIServer) DependencyInjection() {
 	user_service := services.NewUserService(user_repo, channel_service)
 	group_service := services.NewGroupService(group_repo, channel_service, user_service)
 	message_service := services.NewMessageService(message_repo)
+
+	s.conn_manager = services.NewConnManager(message_service)
+	go s.conn_manager.HandleIncomingMessages()
 
 	s.user_controller = controllers.NewUserController(user_service)
 	s.group_controller = controllers.NewGroupController(group_service)
