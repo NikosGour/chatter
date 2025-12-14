@@ -1,7 +1,6 @@
 package services
 
 import (
-	"database/sql"
 	"errors"
 
 	"github.com/NikosGour/chatter/internal/models"
@@ -79,17 +78,11 @@ func (s *GroupService) Create(group *models.Group) (uuid.UUID, error) {
 func (s *GroupService) AddUserToGroup(user_id uuid.UUID, group_id uuid.UUID) error {
 	_, err := s.user_service.GetByID(user_id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.ErrUserNotFound
-		}
 		return err
 	}
 
 	_, err = s.GetByID(group_id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.ErrGroupNotFound
-		}
 		return err
 	}
 

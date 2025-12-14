@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/NikosGour/chatter/internal/models"
@@ -46,6 +48,10 @@ func (chr *channelRepository) GetByID(id uuid.UUID) (*ChannelDBO, error) {
 
 	err := chr.db.Get(&chdbo, q, id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%s:%s", models.ErrChannelNotFound, id)
+		}
+
 		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
 	}
 

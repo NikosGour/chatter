@@ -130,10 +130,13 @@ func (s *APIServer) DependencyInjection() {
 	message_repo := repositories.NewMessageRepository(s.db)
 	channel_repo := repositories.NewChannelRepository(s.db)
 
-	channel_service := services.NewUUIDGenerator(channel_repo)
+	channel_service := services.NewChannelService(channel_repo)
 	user_service := services.NewUserService(user_repo, channel_service)
 	group_service := services.NewGroupService(group_repo, channel_service, user_service)
-	message_service := services.NewMessageService(message_repo)
+	message_service := services.NewMessageService(message_repo, channel_service)
+
+	channel_service.AddUserService(user_service)
+	channel_service.AddGroupService(group_service)
 
 	s.conn_manager = services.NewConnManager(message_service)
 	go s.conn_manager.HandleIncomingMessages()

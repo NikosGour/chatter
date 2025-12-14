@@ -27,6 +27,14 @@ func (g *Group) GetName() string {
 	return g.Name
 }
 
+func (g *Group) GetRecipients() []uuid.UUID {
+	recipients := []uuid.UUID{}
+	for _, u := range g.Users {
+		recipients = append(recipients, u.Id)
+	}
+	return recipients
+}
+
 func (g Group) Validate() error {
 	err := common.Validate.Struct(g)
 	if err != nil {

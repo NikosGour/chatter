@@ -36,7 +36,13 @@ func (mc *MessageController) GetAll(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error())
 	}
 
-	return c.JSON(messages)
+	message_dtos := []models.MessageDTO{}
+	for _, message := range messages {
+		mdto := mc.message_service.MessageToDTO(&message)
+		message_dtos = append(message_dtos, *mdto)
+	}
+
+	return c.JSON(message_dtos)
 }
 
 func (mc *MessageController) GetById(c *fiber.Ctx) error {
@@ -50,5 +56,7 @@ func (mc *MessageController) GetById(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error())
 	}
 
-	return c.JSON(message)
+	mdto := mc.message_service.MessageToDTO(message)
+
+	return c.JSON(mdto)
 }

@@ -8,11 +8,11 @@ import (
 type MessageService struct {
 	message_repo repositories.MessageRepository
 
-	channel_service ChannelService
+	channel_service *ChannelService
 }
 
-func NewMessageService(message_repo repositories.MessageRepository) *MessageService {
-	s := &MessageService{message_repo: message_repo}
+func NewMessageService(message_repo repositories.MessageRepository, channel_service *ChannelService) *MessageService {
+	s := &MessageService{message_repo: message_repo, channel_service: channel_service}
 	return s
 }
 
@@ -69,7 +69,32 @@ func (s *MessageService) toMessage(message_dbo repositories.MessageDBO) (*models
 		DateSent: message_dbo.DateSent,
 	}
 
+	sender, err := s.channel_service.GetByID(message_dbo.SenderId)
+	if err != nil {
+		return nil, err
+	}
+
+	recipient, err := s.channel_service.GetByID(message_dbo.RecipientId)
+	if err != nil {
+		return nil, err
+	}
+
+	message.Sender = sender
+	message.Recipient = recipient
 	return message, nil
+}
+
+func (s *MessageService) MessageToDTO(m *models.Message) *models.MessageDTO {
+	message := &models.MessageDTO{
+		Id:       m.Id,
+		Text:     m.Text,
+		DateSent: m.DateSent,
+	}
+
+	message.Sender = m.Sender.GetId()
+	message.Recipients = m.Sender.GetRecipients()
+
+	return message
 }
 
 func messageToDBO(m *models.Message) *repositories.MessageDBO {

@@ -63,7 +63,7 @@ func (mr *messageRepository) GetByID(id int64) (*MessageDBO, error) {
 	err := mr.db.Get(&mdbo, q, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrMessageNotFound
+			return nil, fmt.Errorf("%s:%d", models.ErrMessageNotFound, id)
 		}
 
 		msg := fmt.Errorf("on q=`%s`,id=`%d`: %w", q, id, err)

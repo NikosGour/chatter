@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/NikosGour/chatter/internal/models"
@@ -51,6 +53,9 @@ func (ur *userRepository) GetByID(id uuid.UUID) (*UserDBO, error) {
 
 	err := ur.db.Get(&udbo, q, id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%s:%s", models.ErrUserNotFound, id)
+		}
 		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
 	}
 

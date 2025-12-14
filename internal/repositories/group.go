@@ -58,7 +58,7 @@ func (gr *groupRepository) GetByID(id uuid.UUID) (*GroupDBO, error) {
 	err := gr.db.Get(&gdbo, q, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrGroupNotFound
+			return nil, fmt.Errorf("%s:%s", models.ErrGroupNotFound, id)
 		}
 
 		msg := fmt.Errorf("on q=`%s`,id=`%s`: %w", q, id, err)
@@ -122,7 +122,7 @@ func (gr *groupRepository) GetUsers(group_id uuid.UUID) ([]uuid.UUID, error) {
 	err := gr.db.Select(&user_ids, q, group_id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrGroupHasNoUsers
+			return nil, fmt.Errorf("%s:%s", models.ErrGroupHasNoUsers, group_id)
 		}
 		return nil, err
 	}

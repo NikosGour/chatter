@@ -26,6 +26,10 @@ func (u *User) GetName() string {
 	return u.Username
 }
 
+func (u *User) GetRecipients() []uuid.UUID {
+	return []uuid.UUID{u.Id}
+}
+
 func (u User) Validate() error {
 	err := common.Validate.Struct(u)
 	if err != nil {

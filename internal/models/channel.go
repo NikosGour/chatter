@@ -1,11 +1,25 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
+
+var (
+	ErrChannelNotFound = errors.New("channel not found")
+)
 
 type Channel interface {
 	GetId() uuid.UUID
 	GetName() string
+	GetRecipients() []uuid.UUID
 }
+
+var (
+	ErrInvalidChannelType = errors.New("invalid channel type")
+)
+
 type ChannelType string
 
 const (
