@@ -45,21 +45,21 @@ func (st *PostgreSQLStorage) init_database() {
 }
 
 func (st *PostgreSQLStorage) CreateTables() error {
-	_, err := sqlx.LoadFile(st, projectpath.RootFile("db/create_channels.sql"))
+	_, err := sqlx.LoadFile(st, projectpath.RootFile("db/create_servers.sql"))
 	if err != nil {
-		return fmt.Errorf("on LoadFile(create_channels): %w", err)
+		return fmt.Errorf("on LoadFile(create_servers): %w", err)
 	}
 	_, err = sqlx.LoadFile(st, projectpath.RootFile("db/create_users.sql"))
 	if err != nil {
 		return fmt.Errorf("on LoadFile(create_users): %w", err)
 	}
-	_, err = sqlx.LoadFile(st, projectpath.RootFile("db/create_groups.sql"))
+	_, err = sqlx.LoadFile(st, projectpath.RootFile("db/create_server_members.sql"))
 	if err != nil {
-		return fmt.Errorf("on LoadFile(create_groups): %w", err)
+		return fmt.Errorf("on LoadFile(create_server_members): %w", err)
 	}
-	_, err = sqlx.LoadFile(st, projectpath.RootFile("db/create_group_members.sql"))
+	_, err = sqlx.LoadFile(st, projectpath.RootFile("db/create_tabs.sql"))
 	if err != nil {
-		return fmt.Errorf("on LoadFile(create_group_members): %w", err)
+		return fmt.Errorf("on LoadFile(create_tabs): %w", err)
 	}
 	_, err = sqlx.LoadFile(st, projectpath.RootFile("db/create_messages.sql"))
 	if err != nil {
