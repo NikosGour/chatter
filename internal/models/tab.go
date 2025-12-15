@@ -9,18 +9,19 @@ import (
 )
 
 var (
-	ErrUserNotFound = errors.New("user not found")
+	ErrTabNotFound = errors.New("tab not found")
 )
 
-type User struct {
+type Tab struct {
 	Id          uuid.UUID `json:"id,omitempty" db:"id"`
-	Username    string    `json:"username,omitempty" db:"username"`
-	Password    string    `json:"password,omitempty" db:"password"`
+	Name        string    `json:"name,omitempty" db:"name"`
+	ServerId    uuid.UUID `json:"server_id,omitempty" db:"server_id"`
+	Server      *Server   `json:"server,omitempty" db:"server"`
 	DateCreated time.Time `json:"date_created,omitempty,omitzero" db:"date_created"`
 }
 
-func (u User) Validate() error {
-	err := common.Validate.Struct(u)
+func (t Tab) Validate() error {
+	err := common.Validate.Struct(t)
 	if err != nil {
 		return err
 	}

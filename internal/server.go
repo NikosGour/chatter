@@ -21,8 +21,9 @@ type APIServer struct {
 	db             *storage.PostgreSQLStorage
 
 	user_controller    *controllers.UserController
-	group_controller   *controllers.GroupController
+	server_controller  *controllers.ServerController
 	message_controller *controllers.MessageController
+	tab_controller     *controllers.TabController
 
 	conn_manager *services.ConnManager
 }
@@ -108,17 +109,23 @@ func (s *APIServer) SetupServer() *fiber.App {
 	user.Get("/", s.user_controller.GetAll)
 	user.Get("/:id", s.user_controller.GetById)
 
-	group := app.Group("/group")
-	group.Post("/", s.group_controller.Create)
-	group.Get("/", s.group_controller.GetAll)
-	group.Get("/:id", s.group_controller.GetById)
-	group.Get("/:id/users", s.group_controller.GetUsersById)
-	group.Post("/:id", s.group_controller.AddUserToGroup)
+	group := app.Group("/server")
+	group.Post("/", s.server_controller.Create)
+	group.Get("/", s.server_controller.GetAll)
+	group.Get("/:id", s.server_controller.GetById)
+	group.Get("/:id/users", s.server_controller.GetUsersById)
+	group.Get("/:id/tabs", s.server_controller.GetTabsById)
+	group.Post("/:id", s.server_controller.AddUserToServer)
 
 	message := app.Group("/message")
 	message.Post("/", s.message_controller.Create)
 	message.Get("/", s.message_controller.GetAll)
 	message.Get("/:id", s.message_controller.GetById)
+
+	tab := app.Group("/tab")
+	tab.Post("/", s.tab_controller.Create)
+	tab.Get("/", s.tab_controller.GetAll)
+	tab.Get("/:id", s.tab_controller.GetById)
 
 	return app
 }
@@ -126,22 +133,20 @@ func (s *APIServer) SetupServer() *fiber.App {
 func (s *APIServer) DependencyInjection() {
 
 	user_repo := repositories.NewUserRepository(s.db)
-	group_repo := repositories.NewGroupRepository(s.db)
+	server_repo := repositories.NewServerRepository(s.db)
 	message_repo := repositories.NewMessageRepository(s.db)
-	channel_repo := repositories.NewChannelRepository(s.db)
+	tab_repo := repositories.NewTabRepository(s.db)
 
-	channel_service := services.NewChannelService(channel_repo)
-	user_service := services.NewUserService(user_repo, channel_service)
-	group_service := services.NewGroupService(group_repo, channel_service, user_service)
-	message_service := services.NewMessageService(message_repo, channel_service)
-
-	channel_service.AddUserService(user_service)
-	channel_service.AddGroupService(group_service)
+	user_service := services.NewUserService(user_repo)
+	message_service := services.NewMessageService(message_repo)
+	tab_service := services.NewTabService(tab_repo)
+	server_service := services.NewServerService(server_repo, user_service, tab_service)
 
 	s.conn_manager = services.NewConnManager(message_service)
 	go s.conn_manager.HandleIncomingMessages()
 
 	s.user_controller = controllers.NewUserController(user_service)
-	s.group_controller = controllers.NewGroupController(group_service)
+	s.server_controller = controllers.NewServerController(server_service)
 	s.message_controller = controllers.NewMessageController(message_service)
+	s.tab_controller = controllers.NewTabController(tab_service)
 }

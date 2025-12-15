@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
-	"github.com/google/uuid"
 )
 
 var (
@@ -13,11 +12,11 @@ var (
 )
 
 type Message struct {
-	Id        int64     `json:"id,omitempty"`
-	Text      string    `json:"text"`
-	Sender    Channel   `validate:"required" json:"sender_id,omitempty"`
-	Recipient Channel   `validate:"required" json:"recipient_id,omitempty"`
-	DateSent  time.Time `validate:"required" json:"date_sent,omitempty"`
+	Id       int64     `json:"id,omitempty"`
+	Text     string    `json:"text"`
+	Sender   *User     `json:"sender,omitempty"`
+	Tab      *Tab      `json:"tab,omitempty"`
+	DateSent time.Time `validate:"required" json:"date_sent,omitempty,omitzero"`
 }
 
 func (m Message) Validate() error {
@@ -26,12 +25,4 @@ func (m Message) Validate() error {
 		return err
 	}
 	return nil
-}
-
-type MessageDTO struct {
-	Id         int64       `json:"id,omitempty"`
-	Text       string      `json:"text"`
-	Sender     uuid.UUID   `validate:"required" json:"sender_id,omitempty"`
-	Recipients []uuid.UUID `validate:"required" json:"recipient_id,omitempty"`
-	DateSent   time.Time   `validate:"required" json:"date_sent,omitempty"`
 }

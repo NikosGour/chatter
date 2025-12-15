@@ -11,22 +11,22 @@ import (
 	"github.com/google/uuid"
 )
 
-type GroupController struct {
-	group_service *services.GroupService
+type ServerController struct {
+	server_service *services.ServerService
 }
 
-func NewGroupController(group_service *services.GroupService) *GroupController {
-	gc := &GroupController{group_service: group_service}
-	return gc
+func NewServerController(server_service *services.ServerService) *ServerController {
+	sc := &ServerController{server_service: server_service}
+	return sc
 }
 
-func (gc *GroupController) Create(c *fiber.Ctx) error {
-	g, err := common.BodyParse[models.Group](c)
+func (sc *ServerController) Create(c *fiber.Ctx) error {
+	server, err := common.BodyParse[models.Server](c)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
 
-	insert_id, err := gc.group_service.Create(g)
+	insert_id, err := sc.server_service.Create(server)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -34,22 +34,22 @@ func (gc *GroupController) Create(c *fiber.Ctx) error {
 	return c.JSON(insert_id)
 }
 
-func (gc *GroupController) GetAll(c *fiber.Ctx) error {
-	gs, err := gc.group_service.GetAll()
+func (sc *ServerController) GetAll(c *fiber.Ctx) error {
+	servers, err := sc.server_service.GetAll()
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
 
-	return c.JSON(gs)
+	return c.JSON(servers)
 }
 
-func (gc *GroupController) GetById(c *fiber.Ctx) error {
+func (sc *ServerController) GetById(c *fiber.Ctx) error {
 	id, err := common.ParamsParseUUID(c, "id")
 	if err != nil {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
 	}
 
-	g, err := gc.group_service.GetByID(id)
+	g, err := sc.server_service.GetByID(id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
@@ -57,22 +57,36 @@ func (gc *GroupController) GetById(c *fiber.Ctx) error {
 	return c.JSON(g)
 }
 
-func (gc *GroupController) GetUsersById(c *fiber.Ctx) error {
+func (sc *ServerController) GetUsersById(c *fiber.Ctx) error {
 	id, err := common.ParamsParseUUID(c, "id")
 	if err != nil {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
 	}
 
-	us, err := gc.group_service.GetUsers(id)
+	users, err := sc.server_service.GetUsers(id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}
 
-	return c.JSON(us)
+	return c.JSON(users)
 }
 
-func (gc *GroupController) AddUserToGroup(c *fiber.Ctx) error {
-	group_id, err := common.ParamsParseUUID(c, "id")
+func (sc *ServerController) GetTabsById(c *fiber.Ctx) error {
+	id, err := common.ParamsParseUUID(c, "id")
+	if err != nil {
+		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
+	}
+
+	tabs, err := sc.server_service.GetTabs(id)
+	if err != nil {
+		return common.JSONErr(c, err.Error())
+	}
+
+	return c.JSON(tabs)
+}
+
+func (sc *ServerController) AddUserToServer(c *fiber.Ctx) error {
+	server_id, err := common.ParamsParseUUID(c, "id")
 	if err != nil {
 		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
 	}
@@ -86,10 +100,10 @@ func (gc *GroupController) AddUserToGroup(c *fiber.Ctx) error {
 		log.Error("%s", msg)
 		return common.JSONErr(c, msg.Error(), fiber.StatusBadRequest)
 	}
-	log.Debug("group_id: %#v", group_id.String())
+	log.Debug("server_id: %#v", server_id.String())
 	log.Debug("body.User_id.String(): %#v", body.User_id.String())
 
-	err = gc.group_service.AddUserToGroup(body.User_id, group_id)
+	err = sc.server_service.AddUserToServer(body.User_id, server_id)
 	if err != nil {
 		return common.JSONErr(c, err.Error())
 	}

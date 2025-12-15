@@ -3,16 +3,16 @@ package services
 import (
 	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/repositories"
+	"github.com/NikosGour/logging/log"
 )
 
+type MessageDTO = models.Message
 type MessageService struct {
 	message_repo repositories.MessageRepository
-
-	channel_service *ChannelService
 }
 
-func NewMessageService(message_repo repositories.MessageRepository, channel_service *ChannelService) *MessageService {
-	s := &MessageService{message_repo: message_repo, channel_service: channel_service}
+func NewMessageService(message_repo repositories.MessageRepository) *MessageService {
+	s := &MessageService{message_repo: message_repo}
 	return s
 }
 
@@ -68,42 +68,24 @@ func (s *MessageService) toMessage(message_dbo repositories.MessageDBO) (*models
 		Text:     message_dbo.Text,
 		DateSent: message_dbo.DateSent,
 	}
-
-	sender, err := s.channel_service.GetByID(message_dbo.SenderId)
-	if err != nil {
-		return nil, err
-	}
-
-	recipient, err := s.channel_service.GetByID(message_dbo.RecipientId)
-	if err != nil {
-		return nil, err
-	}
-
-	message.Sender = sender
-	message.Recipient = recipient
+	message.Sender = message_dbo.User
+	message.Tab = message_dbo.Tab
+	log.Warn("needs fixing")
 	return message, nil
 }
 
-func (s *MessageService) MessageToDTO(m *models.Message) *models.MessageDTO {
-	message := &models.MessageDTO{
-		Id:       m.Id,
-		Text:     m.Text,
-		DateSent: m.DateSent,
-	}
+func (s *MessageService) MessageToDTO(m *models.Message) *MessageDTO {
 
-	message.Sender = m.Sender.GetId()
-	message.Recipients = m.Sender.GetRecipients()
-
-	return message
+	return m
 }
 
 func messageToDBO(m *models.Message) *repositories.MessageDBO {
 	mdbo := &repositories.MessageDBO{
-		Id:          m.Id,
-		Text:        m.Text,
-		SenderId:    m.Sender.GetId(),
-		RecipientId: m.Recipient.GetId(),
-		DateSent:    m.DateSent,
+		Id:       m.Id,
+		Text:     m.Text,
+		SenderId: m.Sender.Id,
+		TabId:    m.Tab.Id,
+		DateSent: m.DateSent,
 	}
 	return mdbo
 }

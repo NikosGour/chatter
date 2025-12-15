@@ -36,7 +36,7 @@ func (mc *MessageController) GetAll(c *fiber.Ctx) error {
 		return common.JSONErr(c, err.Error())
 	}
 
-	message_dtos := []models.MessageDTO{}
+	message_dtos := []services.MessageDTO{}
 	for _, message := range messages {
 		mdto := mc.message_service.MessageToDTO(&message)
 		message_dtos = append(message_dtos, *mdto)

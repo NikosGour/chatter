@@ -5,7 +5,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/logging/log"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/google/uuid"
@@ -14,7 +13,7 @@ import (
 type ConnManager struct {
 	clients_mu sync.RWMutex
 	clients    map[uuid.UUID]*websocket.Conn
-	broadcast  chan *models.MessageDTO
+	broadcast  chan *MessageDTO
 
 	message_service *MessageService
 }
@@ -26,7 +25,7 @@ var (
 func NewConnManager(message_service *MessageService) *ConnManager {
 	cm := &ConnManager{
 		clients:         make(map[uuid.UUID]*websocket.Conn),
-		broadcast:       make(chan *models.MessageDTO),
+		broadcast:       make(chan *MessageDTO),
 		message_service: message_service,
 	}
 	return cm
@@ -81,7 +80,7 @@ func (cm *ConnManager) ClientReadIncoming(id uuid.UUID) {
 		if mt > 0 {
 			log.Debug("mt: %#v ,data: %#v", mt, string(data))
 
-			var msg models.MessageDTO
+			var msg MessageDTO
 			err := json.Unmarshal(data, &msg)
 			if err != nil {
 				log.Error("on unmarshal: %s", err)
