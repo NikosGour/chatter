@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"sync"
 
 	"github.com/NikosGour/logging/log"
@@ -12,7 +13,7 @@ import (
 
 type ConnManager struct {
 	clients_mu sync.RWMutex
-	clients    map[uuid.UUID]*websocket.Conn
+	Clients    map[uuid.UUID]map[uuid.UUID]*websocket.Conn
 	broadcast  chan *MessageDTO
 
 	message_service *MessageService
@@ -24,48 +25,78 @@ var (
 
 func NewConnManager(message_service *MessageService) *ConnManager {
 	cm := &ConnManager{
-		clients:         make(map[uuid.UUID]*websocket.Conn),
+		Clients:         make(map[uuid.UUID]map[uuid.UUID]*websocket.Conn),
 		broadcast:       make(chan *MessageDTO),
 		message_service: message_service,
 	}
 	return cm
 }
 
-func (cm *ConnManager) AddClient(id uuid.UUID, conn *websocket.Conn) {
+func (cm *ConnManager) AddClient(tab_id uuid.UUID, user_id uuid.UUID, conn *websocket.Conn) error {
+	conns, err := cm.GetConns(tab_id)
+
 	cm.clients_mu.Lock()
 	defer cm.clients_mu.Unlock()
+	if err != nil {
+		if errors.Is(err, ErrConnectionNotFound) {
+			conns = make(map[uuid.UUID]*websocket.Conn)
+		} else {
+			return err
+		}
 
-	cm.clients[id] = conn
+	}
+	conns[user_id] = conn
+
+	cm.Clients[tab_id] = conns
+	return nil
 }
 
-func (cm *ConnManager) RemoveClient(id uuid.UUID) error {
-	_, err := cm.GetConn(id)
+func (cm *ConnManager) RemoveClient(user_id uuid.UUID) error {
+	_, err := cm.GetConn(user_id)
 	if err != nil {
 		return err
 	}
 	cm.clients_mu.Lock()
 	defer cm.clients_mu.Unlock()
 
-	delete(cm.clients, id)
+	for tab := range maps.Values(cm.Clients) {
+		_, ok := tab[user_id]
+		if ok {
+			delete(tab, user_id)
+			return nil
+		}
+	}
 
-	return nil
+	return ErrConnectionNotFound
 }
 
-func (cm *ConnManager) GetConn(id uuid.UUID) (*websocket.Conn, error) {
+func (cm *ConnManager) GetConns(tab_id uuid.UUID) (map[uuid.UUID]*websocket.Conn, error) {
 	cm.clients_mu.RLock()
-	conn, ok := cm.clients[id]
+	conns, ok := cm.Clients[tab_id]
 	cm.clients_mu.RUnlock()
 
-	if !ok || conn == nil {
+	if !ok || conns == nil {
 		return nil, ErrConnectionNotFound
 	}
-	return conn, nil
+	return conns, nil
+}
+func (cm *ConnManager) GetConn(user_id uuid.UUID) (*websocket.Conn, error) {
+	cm.clients_mu.RLock()
+	defer cm.clients_mu.RUnlock()
+	for tab := range maps.Values(cm.Clients) {
+		conn, ok := tab[user_id]
+		if ok {
+			return conn, nil
+		}
+	}
+
+	return nil, ErrConnectionNotFound
 }
 
-func (cm *ConnManager) ClientReadIncoming(id uuid.UUID) {
-	conn, err := cm.GetConn(id)
+func (cm *ConnManager) ClientReadIncoming(uid uuid.UUID) {
+	conn, err := cm.GetConn(uid)
 	if err != nil {
-		log.Error("getConn: %s", err)
+		log.Error("on read message: %s", err)
 		return
 	}
 
@@ -98,24 +129,27 @@ func (cm *ConnManager) HandleIncomingMessages() {
 		// conn, ok := cm.clients[msg.Recipient.GetId()]
 		// cm.clients_mu.RUnlock()
 
-		for _, conn := range cm.clients {
+		for _, conns := range cm.Clients {
 
-			// msg_id, err := cm.message_service.Create(msg)
-			// if err != nil {
-			// 	log.Error("could not insert message to db: %s", err)
-			// 	continue
-			// }
-			// msg.Id = msg_id
+			for _, uconn := range conns {
 
-			// if !ok {
-			// 	log.Warn("tried to write message to offline user: %s", msg.Recipient.GetId())
-			// 	continue
-			// }
+				// msg_id, err := cm.message_service.Create(msg)
+				// if err != nil {
+				// 	log.Error("could not insert message to db: %s", err)
+				// 	continue
+				// }
+				// msg.Id = msg_id
 
-			err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Text))
-			if err != nil {
-				log.Error("failed on write: %s", err)
-				continue
+				// if !ok {
+				// 	log.Warn("tried to write message to offline user: %s", msg.Recipient.GetId())
+				// 	continue
+				// }
+
+				err := uconn.Conn.WriteMessage(websocket.TextMessage, []byte(msg.Text))
+				if err != nil {
+					log.Error("failed on write: %s", err)
+					continue
+				}
 			}
 		}
 	}
