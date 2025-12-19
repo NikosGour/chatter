@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"errors"
-	"maps"
 	"sync"
 
 	"github.com/NikosGour/logging/log"
@@ -13,7 +12,7 @@ import (
 
 type ConnManager struct {
 	clients_mu sync.RWMutex
-	Clients    map[uuid.UUID]map[uuid.UUID]*websocket.Conn
+	Clients    map[uuid.UUID]*websocket.Conn
 	broadcast  chan *MessageDTO
 
 	message_service *MessageService
@@ -25,30 +24,18 @@ var (
 
 func NewConnManager(message_service *MessageService) *ConnManager {
 	cm := &ConnManager{
-		Clients:         make(map[uuid.UUID]map[uuid.UUID]*websocket.Conn),
+		Clients:         make(map[uuid.UUID]*websocket.Conn),
 		broadcast:       make(chan *MessageDTO),
 		message_service: message_service,
 	}
 	return cm
 }
 
-func (cm *ConnManager) AddClient(tab_id uuid.UUID, user_id uuid.UUID, conn *websocket.Conn) error {
-	conns, err := cm.GetConns(tab_id)
-
+func (cm *ConnManager) AddClient(user_id uuid.UUID, conn *websocket.Conn) {
 	cm.clients_mu.Lock()
 	defer cm.clients_mu.Unlock()
-	if err != nil {
-		if errors.Is(err, ErrConnectionNotFound) {
-			conns = make(map[uuid.UUID]*websocket.Conn)
-		} else {
-			return err
-		}
 
-	}
-	conns[user_id] = conn
-
-	cm.Clients[tab_id] = conns
-	return nil
+	cm.Clients[user_id] = conn
 }
 
 func (cm *ConnManager) RemoveClient(user_id uuid.UUID) error {
@@ -59,38 +46,20 @@ func (cm *ConnManager) RemoveClient(user_id uuid.UUID) error {
 	cm.clients_mu.Lock()
 	defer cm.clients_mu.Unlock()
 
-	for tab := range maps.Values(cm.Clients) {
-		_, ok := tab[user_id]
-		if ok {
-			delete(tab, user_id)
-			return nil
-		}
-	}
+	delete(cm.Clients, user_id)
 
-	return ErrConnectionNotFound
+	return nil
 }
 
-func (cm *ConnManager) GetConns(tab_id uuid.UUID) (map[uuid.UUID]*websocket.Conn, error) {
-	cm.clients_mu.RLock()
-	conns, ok := cm.Clients[tab_id]
-	cm.clients_mu.RUnlock()
-
-	if !ok || conns == nil {
-		return nil, ErrConnectionNotFound
-	}
-	return conns, nil
-}
 func (cm *ConnManager) GetConn(user_id uuid.UUID) (*websocket.Conn, error) {
 	cm.clients_mu.RLock()
 	defer cm.clients_mu.RUnlock()
-	for tab := range maps.Values(cm.Clients) {
-		conn, ok := tab[user_id]
-		if ok {
-			return conn, nil
-		}
+	conn, ok := cm.Clients[user_id]
+	if !ok {
+		return nil, ErrConnectionNotFound
 	}
+	return conn, nil
 
-	return nil, ErrConnectionNotFound
 }
 
 func (cm *ConnManager) ClientReadIncoming(uid uuid.UUID) {
@@ -129,27 +98,24 @@ func (cm *ConnManager) HandleIncomingMessages() {
 		// conn, ok := cm.clients[msg.Recipient.GetId()]
 		// cm.clients_mu.RUnlock()
 
-		for _, conns := range cm.Clients {
+		for _, conn := range cm.Clients {
 
-			for _, uconn := range conns {
+			// msg_id, err := cm.message_service.Create(msg)
+			// if err != nil {
+			// 	log.Error("could not insert message to db: %s", err)
+			// 	continue
+			// }
+			// msg.Id = msg_id
 
-				// msg_id, err := cm.message_service.Create(msg)
-				// if err != nil {
-				// 	log.Error("could not insert message to db: %s", err)
-				// 	continue
-				// }
-				// msg.Id = msg_id
+			// if !ok {
+			// 	log.Warn("tried to write message to offline user: %s", msg.Recipient.GetId())
+			// 	continue
+			// }
 
-				// if !ok {
-				// 	log.Warn("tried to write message to offline user: %s", msg.Recipient.GetId())
-				// 	continue
-				// }
-
-				err := uconn.Conn.WriteMessage(websocket.TextMessage, []byte(msg.Text))
-				if err != nil {
-					log.Error("failed on write: %s", err)
-					continue
-				}
+			err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Text))
+			if err != nil {
+				log.Error("failed on write: %s", err)
+				continue
 			}
 		}
 	}

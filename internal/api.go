@@ -97,16 +97,7 @@ func (s *APIServer) SetupServer() *fiber.App {
 			}
 			return
 		}
-		err = s.conn_manager.AddClient(id, id, c)
-		if err != nil {
-			log.Error("%s", err)
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseUnsupportedData, fmt.Sprintf("can not add client to conn manager: `%s`", _id)))
-			if err != nil {
-				log.Error("can not add client to conn manager: %s", err)
-			}
-			return
-
-		}
+		s.conn_manager.AddClient(id, c)
 		log.Debug("%#v", s.conn_manager.Clients)
 		defer s.conn_manager.RemoveClient(id)
 
