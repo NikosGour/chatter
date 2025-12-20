@@ -94,29 +94,37 @@ func (cm *ConnManager) ClientReadIncoming(uid uuid.UUID) {
 
 func (cm *ConnManager) HandleIncomingMessages() {
 	for msg := range cm.broadcast {
-		// cm.clients_mu.RLock()
-		// conn, ok := cm.clients[msg.Recipient.GetId()]
-		// cm.clients_mu.RUnlock()
+		msg_id, err := cm.message_service.Create(msg)
+		if err != nil {
+			log.Error("could not insert message to db: %s", err)
+			continue
+		}
+		db_msg, err := cm.message_service.GetByID(msg_id)
+		if err != nil {
+			log.Error("could not find msg with id: %d, %s", msg_id, err)
+		}
 
+		msg_dto := cm.message_service.MessageToDTO(db_msg)
+		j_msg, err := json.Marshal(msg_dto)
+		if err != nil {
+			log.Warn("message failed to be encoded to json: `%#v`, %s", msg, err)
+			continue
+		}
+
+		cm.clients_mu.RLock()
 		for _, conn := range cm.Clients {
-
-			// msg_id, err := cm.message_service.Create(msg)
-			// if err != nil {
-			// 	log.Error("could not insert message to db: %s", err)
-			// 	continue
-			// }
-			// msg.Id = msg_id
 
 			// if !ok {
 			// 	log.Warn("tried to write message to offline user: %s", msg.Recipient.GetId())
 			// 	continue
 			// }
 
-			err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Text))
+			err := conn.WriteMessage(websocket.TextMessage, j_msg)
 			if err != nil {
 				log.Error("failed on write: %s", err)
 				continue
 			}
 		}
+		cm.clients_mu.RUnlock()
 	}
 }

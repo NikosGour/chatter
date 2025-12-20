@@ -3,7 +3,6 @@ package services
 import (
 	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/repositories"
-	"github.com/NikosGour/logging/log"
 )
 
 type MessageDTO = models.Message
@@ -70,7 +69,6 @@ func (s *MessageService) toMessage(message_dbo repositories.MessageDBO) (*models
 	}
 	message.Sender = message_dbo.User
 	message.Tab = message_dbo.Tab
-	log.Warn("needs fixing")
 	return message, nil
 }
 
