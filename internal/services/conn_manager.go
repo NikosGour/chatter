@@ -3,8 +3,10 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"sync"
 
+	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/logging/log"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/google/uuid"
@@ -16,17 +18,21 @@ type ConnManager struct {
 	broadcast  chan *MessageDTO
 
 	message_service *MessageService
+	tab_service     *TabService
+	server_service  *ServerService
 }
 
 var (
 	ErrConnectionNotFound = errors.New("connection not found")
 )
 
-func NewConnManager(message_service *MessageService) *ConnManager {
+func NewConnManager(message_service *MessageService, tab_service *TabService, server_service *ServerService) *ConnManager {
 	cm := &ConnManager{
 		Clients:         make(map[uuid.UUID]*websocket.Conn),
 		broadcast:       make(chan *MessageDTO),
 		message_service: message_service,
+		tab_service:     tab_service,
+		server_service:  server_service,
 	}
 	return cm
 }
@@ -111,8 +117,27 @@ func (cm *ConnManager) HandleIncomingMessages() {
 			continue
 		}
 
+		tab, err := cm.tab_service.GetByID(msg.Tab.Id)
+		if err != nil {
+			log.Warn("couldn't find corresponding message tab: `%#v`, %s", msg, err)
+		}
+
+		server, err := cm.server_service.GetByID(tab.ServerId)
+		if err != nil {
+			log.Warn("couldn't find corresponding server: `%#v`, %s", tab, err)
+		}
+
+		users, err := cm.server_service.GetUsers(server.Id)
+		if err != nil {
+			log.Warn("couldn't find users for server: `%#v`, %s", server, err)
+		}
+
 		cm.clients_mu.RLock()
-		for _, conn := range cm.Clients {
+		log.Debug("users: %#v", users)
+		for uid, conn := range cm.Clients {
+			if !slices.ContainsFunc(users, func(u models.User) bool { return u.Id == uid }) {
+				continue
+			}
 
 			// if !ok {
 			// 	log.Warn("tried to write message to offline user: %s", msg.Recipient.GetId())

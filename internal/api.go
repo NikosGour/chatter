@@ -142,7 +142,7 @@ func (s *APIServer) DependencyInjection() {
 	tab_service := services.NewTabService(tab_repo)
 	server_service := services.NewServerService(server_repo, user_service, tab_service)
 
-	s.conn_manager = services.NewConnManager(message_service)
+	s.conn_manager = services.NewConnManager(message_service, tab_service, server_service)
 	go s.conn_manager.HandleIncomingMessages()
 
 	s.user_controller = controllers.NewUserController(user_service)

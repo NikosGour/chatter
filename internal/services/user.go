@@ -9,8 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type User = models.User
-
 type UserService struct {
 	user_repo repositories.UserRepository
 }
