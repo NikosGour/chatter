@@ -58,6 +58,23 @@ func (s *ServerService) GetByID(id uuid.UUID) (*models.Server, error) {
 	return Server, nil
 }
 
+func (s *ServerService) GetByName(name string) ([]models.Server, error) {
+	server_dbos, err := s.server_repo.GetByName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	servers := []models.Server{}
+	for _, server_dbo := range server_dbos {
+		server, err := s.toServer(server_dbo)
+		if err != nil {
+			return nil, err
+		}
+		servers = append(servers, *server)
+	}
+	return servers, nil
+}
+
 // Inserts a server into a database.
 //
 // Returns the UUID of the created server.

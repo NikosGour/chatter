@@ -42,6 +42,20 @@ func (s *TabService) GetByID(id uuid.UUID) (*models.Tab, error) {
 	return s.ToTab(tab_dbo), nil
 
 }
+func (s *TabService) GetByName(name string) ([]models.Tab, error) {
+	tab_dbos, err := s.tab_repo.GetByName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	tabs := []models.Tab{}
+	for _, tab_dbo := range tab_dbos {
+		tab := s.ToTab(&tab_dbo)
+		tabs = append(tabs, *tab)
+	}
+
+	return tabs, nil
+}
 
 func (s *TabService) GetByServerID(server_id uuid.UUID) ([]models.Tab, error) {
 	tab_dbos, err := s.tab_repo.GetByServerID(server_id)

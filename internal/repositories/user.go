@@ -13,6 +13,7 @@ import (
 type UserRepository interface {
 	GetAll() ([]UserDBO, error)
 	GetByID(id uuid.UUID) (*UserDBO, error)
+	GetByUsername(username string) ([]UserDBO, error)
 	Create(user *UserDBO) (uuid.UUID, error)
 }
 
@@ -60,6 +61,22 @@ func (ur *userRepository) GetByID(id uuid.UUID) (*UserDBO, error) {
 	}
 
 	return &udbo, nil
+}
+func (ur *userRepository) GetByUsername(username string) ([]UserDBO, error) {
+	udbos := []UserDBO{}
+	q := `SELECT id, username, password, date_created
+		  FROM users
+	      WHERE username = $1;`
+
+	err := ur.db.Select(&udbos, q, username)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w:%s", models.ErrUserNotFound, username)
+		}
+		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
+	}
+
+	return udbos, nil
 }
 
 // Inserts a userinto a database.

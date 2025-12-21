@@ -42,6 +42,20 @@ func (s *UserService) GetByID(id uuid.UUID) (*models.User, error) {
 	return s.ToUser(udbo), nil
 
 }
+func (s *UserService) GetByUsername(username string) ([]models.User, error) {
+	udbos, err := s.user_repo.GetByUsername(username)
+	if err != nil {
+		return nil, err
+	}
+
+	us := []models.User{}
+	for _, udbo := range udbos {
+		u := s.ToUser(&udbo)
+		us = append(us, *u)
+	}
+
+	return us, nil
+}
 func (s *UserService) Create(user *models.User) (uuid.UUID, error) {
 	id, err := s.generateUUID()
 	if err != nil {

@@ -14,6 +14,7 @@ type TabRepository interface {
 	GetAll() ([]TabDBO, error)
 	GetByID(id uuid.UUID) (*TabDBO, error)
 	GetByServerID(server_id uuid.UUID) ([]TabDBO, error)
+	GetByName(name string) ([]TabDBO, error)
 	Create(Tab *TabDBO) (uuid.UUID, error)
 }
 
@@ -82,6 +83,24 @@ func (tr *tabRepository) GetByServerID(server_id uuid.UUID) ([]TabDBO, error) {
 	}
 
 	return tab_dbos, nil
+}
+
+func (tr *tabRepository) GetByName(name string) ([]TabDBO, error) {
+	tab_dbos := []TabDBO{}
+	q := `SELECT id, name, server_id, date_created
+		  FROM tabs
+	      WHERE name = $1`
+
+	err := tr.db.Select(&tab_dbos, q, name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w:%s", models.ErrTabNotFound, name)
+		}
+		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
+	}
+
+	return tab_dbos, nil
+
 }
 
 // Inserts a tab into a database.

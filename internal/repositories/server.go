@@ -14,6 +14,7 @@ import (
 type ServerRepository interface {
 	GetAll() ([]ServerDBO, error)
 	GetByID(id uuid.UUID) (*ServerDBO, error)
+	GetByName(name string) ([]ServerDBO, error)
 	Create(Server *ServerDBO) (uuid.UUID, error)
 	AddUserToServer(user_id uuid.UUID, server_id uuid.UUID) error
 	GetUsers(server_id uuid.UUID) ([]uuid.UUID, error)
@@ -33,12 +34,12 @@ type ServerDBO = models.Server
 // Retrieves all servers from the database.
 //
 // Might return any sql error.
-func (gr *serverRepository) GetAll() ([]ServerDBO, error) {
+func (sr *serverRepository) GetAll() ([]ServerDBO, error) {
 	server_dbos := []ServerDBO{}
 	q := `SELECT id, name, date_created
 	      FROM servers;`
 
-	err := gr.db.Select(&server_dbos, q)
+	err := sr.db.Select(&server_dbos, q)
 	if err != nil {
 		return nil, err
 	}
@@ -49,13 +50,13 @@ func (gr *serverRepository) GetAll() ([]ServerDBO, error) {
 // Retrieves a server given the UUID.
 //
 // Might return ErrServerNotFound or any other sql error
-func (gr *serverRepository) GetByID(id uuid.UUID) (*ServerDBO, error) {
+func (sr *serverRepository) GetByID(id uuid.UUID) (*ServerDBO, error) {
 	server_dbo := ServerDBO{}
 	q := `SELECT id, name, date_created
 		  FROM servers
 	      WHERE id = $1;`
 
-	err := gr.db.Get(&server_dbo, q, id)
+	err := sr.db.Get(&server_dbo, q, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("%w:%s", models.ErrServerNotFound, id)
@@ -69,17 +70,34 @@ func (gr *serverRepository) GetByID(id uuid.UUID) (*ServerDBO, error) {
 	return &server_dbo, err
 }
 
+func (sr *serverRepository) GetByName(name string) ([]ServerDBO, error) {
+	sdbos := []ServerDBO{}
+	q := `SELECT id, name, date_created
+		  FROM servers
+	      WHERE name = $1;`
+
+	err := sr.db.Select(&sdbos, q, name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w:%s", models.ErrUserNotFound, name)
+		}
+		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
+	}
+
+	return sdbos, nil
+}
+
 // Inserts a server into a database.
 //
 // Returns the UUID of the created server.
 // Might return any sql error
-func (gr *serverRepository) Create(server *ServerDBO) (uuid.UUID, error) {
+func (sr *serverRepository) Create(server *ServerDBO) (uuid.UUID, error) {
 	q := `INSERT INTO servers (id, name, date_created)
 		  VALUES (:id, :name, :date_created)
 		  RETURNING id;`
 
 	insert_id := uuid.Nil
-	stmt, err := gr.db.PrepareNamed(q)
+	stmt, err := sr.db.PrepareNamed(q)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("On q=`%s`: %w", q, err)
 	}
@@ -96,11 +114,11 @@ func (gr *serverRepository) Create(server *ServerDBO) (uuid.UUID, error) {
 // Adds a the user of the given UUID to the list of subscribed users of the server
 //
 // Might return ErrServerNotFound or any other sql error
-func (gr *serverRepository) AddUserToServer(user_id uuid.UUID, server_id uuid.UUID) error {
+func (sr *serverRepository) AddUserToServer(user_id uuid.UUID, server_id uuid.UUID) error {
 	q := `INSERT INTO server_members (server_id, user_id)
 		  VALUES (:server,:user)`
 
-	_, err := gr.db.NamedExec(q, struct {
+	_, err := sr.db.NamedExec(q, struct {
 		Server uuid.UUID `db:"server"`
 		User   uuid.UUID `db:"user"`
 	}{Server: server_id, User: user_id})
@@ -114,12 +132,12 @@ func (gr *serverRepository) AddUserToServer(user_id uuid.UUID, server_id uuid.UU
 // Get all the user UUIDs from a server's user list
 //
 // Might return ErrServerHasNoUsers or any other sql error
-func (gr *serverRepository) GetUsers(server_id uuid.UUID) ([]uuid.UUID, error) {
+func (sr *serverRepository) GetUsers(server_id uuid.UUID) ([]uuid.UUID, error) {
 	user_ids := []uuid.UUID{}
 	q := `SELECT user_id
 		  FROM server_members
 		  where server_id = $1;`
-	err := gr.db.Select(&user_ids, q, server_id.String())
+	err := sr.db.Select(&user_ids, q, server_id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("%w:%s", models.ErrServerHasNoUsers, server_id)

@@ -8,4 +8,5 @@ import (
 func main() {
 	encryptcookie.GenerateKey()
 	log.Debug("encryptcookie.GenerateKey(): %#v", encryptcookie.GenerateKey())
+
 }

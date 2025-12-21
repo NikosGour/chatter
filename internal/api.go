@@ -1,10 +1,13 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
 	"github.com/NikosGour/chatter/internal/controllers"
+	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/repositories"
 	"github.com/NikosGour/chatter/internal/services"
 	"github.com/NikosGour/chatter/internal/storage"
@@ -24,6 +27,11 @@ type APIServer struct {
 	server_controller  *controllers.ServerController
 	message_controller *controllers.MessageController
 	tab_controller     *controllers.TabController
+
+	user_service    *services.UserService
+	server_service  *services.ServerService
+	message_service *services.MessageService
+	tab_service     *services.TabService
 
 	conn_manager *services.ConnManager
 }
@@ -53,6 +61,7 @@ func (s *APIServer) SetupServer() *fiber.App {
 	}))
 
 	s.DependencyInjection()
+	s.SetupDummyData()
 
 	ws := app.Group("/ws", func(c *fiber.Ctx) error {
 		if !websocket.IsWebSocketUpgrade(c) {
@@ -137,16 +146,126 @@ func (s *APIServer) DependencyInjection() {
 	message_repo := repositories.NewMessageRepository(s.db)
 	tab_repo := repositories.NewTabRepository(s.db)
 
-	user_service := services.NewUserService(user_repo)
-	message_service := services.NewMessageService(message_repo)
-	tab_service := services.NewTabService(tab_repo)
-	server_service := services.NewServerService(server_repo, user_service, tab_service)
+	s.user_service = services.NewUserService(user_repo)
+	s.message_service = services.NewMessageService(message_repo)
+	s.tab_service = services.NewTabService(tab_repo)
+	s.server_service = services.NewServerService(server_repo, s.user_service, s.tab_service)
 
-	s.conn_manager = services.NewConnManager(message_service, tab_service, server_service)
+	s.conn_manager = services.NewConnManager(s.message_service, s.tab_service, s.server_service)
 	go s.conn_manager.HandleIncomingMessages()
 
-	s.user_controller = controllers.NewUserController(user_service)
-	s.server_controller = controllers.NewServerController(server_service)
-	s.message_controller = controllers.NewMessageController(message_service)
-	s.tab_controller = controllers.NewTabController(tab_service)
+	s.user_controller = controllers.NewUserController(s.user_service)
+	s.server_controller = controllers.NewServerController(s.server_service)
+	s.message_controller = controllers.NewMessageController(s.message_service)
+	s.tab_controller = controllers.NewTabController(s.tab_service)
+}
+
+func (s *APIServer) SetupDummyData() {
+	magic := "FBdBSTu/F4/t7JIcdfZcGWPBNeUbd5a2S7FIBvquKnk="
+
+	usernames := []string{"nikos", "maria", "rinos", "nisfa", "gkai", "mitsos"}
+	user_ids := []uuid.UUID{}
+	for _, username := range usernames {
+		username_m := username + magic
+
+		user, err := s.user_service.GetByUsername(username_m)
+		if err != nil {
+			if !errors.Is(err, models.ErrUserNotFound) {
+				log.Warn("%s", err)
+				continue
+			}
+
+		}
+		if len(user) != 0 {
+			user_ids = append(user_ids, user[0].Id)
+			continue
+		}
+
+		id, err := s.user_service.Create(&repositories.UserDBO{Username: username_m, Password: "123", DateCreated: time.Now()})
+		if err != nil {
+			log.Warn("%s", err)
+		}
+		user_ids = append(user_ids, id)
+	}
+
+	servers := []struct {
+		Name     string
+		User_ids []int
+	}{
+		{
+			Name:     "Gamiades",
+			User_ids: []int{0, 1, 2},
+		},
+		{
+			Name:     "HUA",
+			User_ids: []int{3, 4, 5},
+		},
+		{
+			Name:     "CTF",
+			User_ids: []int{1, 3, 5},
+		},
+		{
+			Name:     "ArchUsers",
+			User_ids: []int{0, 2, 4},
+		},
+	}
+	server_ids := []uuid.UUID{}
+	for _, ser := range servers {
+		name_m := ser.Name + magic
+		server, err := s.server_service.GetByName(name_m)
+		if err != nil {
+			if !errors.Is(err, models.ErrServerNotFound) {
+				log.Warn("%s", err)
+				continue
+			}
+		}
+		if len(server) != 0 {
+			server_ids = append(server_ids, server[0].Id)
+			continue
+		}
+
+		id, err := s.server_service.Create(&repositories.ServerDBO{Name: name_m, DateCreated: time.Now()})
+		if err != nil {
+			log.Warn("%s", err)
+		}
+		server_ids = append(server_ids, id)
+
+		for _, idx := range ser.User_ids {
+			user_id := user_ids[idx]
+			err := s.server_service.AddUserToServer(user_id, id)
+			if err != nil {
+				log.Warn("%s", err)
+			}
+		}
+	}
+
+	tabs := []struct {
+		Name        string
+		Servers_idx []int
+	}{
+		{Name: "General", Servers_idx: []int{0, 1, 2}},
+		{Name: "Memes", Servers_idx: []int{0, 1, 2, 3}},
+		{Name: "Studying", Servers_idx: []int{2, 3}},
+	}
+
+	for _, t := range tabs {
+
+		name_m := t.Name + magic
+		_, err := s.tab_service.GetByName(name_m)
+		if err != nil {
+			if !errors.Is(err, models.ErrTabNotFound) {
+				log.Warn("%s", err)
+				continue
+			}
+		}
+
+		for _, idx := range t.Servers_idx {
+			server_id := server_ids[idx]
+			_, err := s.tab_service.Create(&repositories.TabDBO{Name: name_m, ServerId: server_id, DateCreated: time.Now()})
+			if err != nil {
+				log.Warn("%s", err)
+			}
+
+		}
+	}
 }
