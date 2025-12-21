@@ -253,10 +253,12 @@ func (s *APIServer) SetupDummyData() {
 		name_m := t.Name + magic
 		_, err := s.tab_service.GetByName(name_m)
 		if err != nil {
-			if !errors.Is(err, models.ErrTabNotFound) {
-				log.Warn("%s", err)
+			if errors.Is(err, models.ErrTabNotFound) {
 				continue
 			}
+			log.Warn("%s", err)
+			continue
+
 		}
 
 		for _, idx := range t.Servers_idx {
