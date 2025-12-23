@@ -3,15 +3,18 @@ package services
 import (
 	"github.com/NikosGour/chatter/internal/models"
 	"github.com/NikosGour/chatter/internal/repositories"
+	"github.com/google/uuid"
 )
 
 type MessageDTO = models.Message
 type MessageService struct {
 	message_repo repositories.MessageRepository
+
+	tab_service *TabService
 }
 
-func NewMessageService(message_repo repositories.MessageRepository) *MessageService {
-	s := &MessageService{message_repo: message_repo}
+func NewMessageService(message_repo repositories.MessageRepository, tab_service *TabService) *MessageService {
+	s := &MessageService{message_repo: message_repo, tab_service: tab_service}
 	return s
 }
 
@@ -49,6 +52,28 @@ func (s *MessageService) GetByID(id int64) (*models.Message, error) {
 		return nil, err
 	}
 	return message, nil
+}
+
+func (s *MessageService) GetByTabID(tab_id uuid.UUID) ([]models.Message, error) {
+	_, err := s.tab_service.GetByID(tab_id)
+	if err != nil {
+		return nil, err
+	}
+
+	message_dbos, err := s.message_repo.GetByTabID(tab_id)
+	if err != nil {
+		return nil, err
+	}
+
+	messages := []models.Message{}
+	for _, message_dbo := range message_dbos {
+		message, err := s.toMessage(message_dbo)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, *message)
+	}
+	return messages, nil
 }
 
 // Inserts a message into a database.

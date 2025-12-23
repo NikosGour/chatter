@@ -131,6 +131,7 @@ func (s *APIServer) SetupServer() *fiber.App {
 	message.Post("/", s.message_controller.Create)
 	message.Get("/", s.message_controller.GetAll)
 	message.Get("/:id", s.message_controller.GetById)
+	message.Get("/tab/:tab_id", s.message_controller.GetByTabId)
 
 	tab := app.Group("/tab")
 	tab.Post("/", s.tab_controller.Create)
@@ -143,22 +144,22 @@ func (s *APIServer) SetupServer() *fiber.App {
 func (s *APIServer) DependencyInjection() {
 
 	user_repo := repositories.NewUserRepository(s.db)
-	server_repo := repositories.NewServerRepository(s.db)
-	message_repo := repositories.NewMessageRepository(s.db)
 	tab_repo := repositories.NewTabRepository(s.db)
+	message_repo := repositories.NewMessageRepository(s.db)
+	server_repo := repositories.NewServerRepository(s.db)
 
 	s.user_service = services.NewUserService(user_repo)
-	s.message_service = services.NewMessageService(message_repo)
 	s.tab_service = services.NewTabService(tab_repo)
+	s.message_service = services.NewMessageService(message_repo, s.tab_service)
 	s.server_service = services.NewServerService(server_repo, s.user_service, s.tab_service)
 
 	s.conn_manager = services.NewConnManager(s.message_service, s.tab_service, s.server_service)
 	go s.conn_manager.HandleIncomingMessages()
 
 	s.user_controller = controllers.NewUserController(s.user_service)
-	s.server_controller = controllers.NewServerController(s.server_service)
-	s.message_controller = controllers.NewMessageController(s.message_service)
 	s.tab_controller = controllers.NewTabController(s.tab_service)
+	s.message_controller = controllers.NewMessageController(s.message_service)
+	s.server_controller = controllers.NewServerController(s.server_service)
 }
 
 func (s *APIServer) SetupDummyData() {

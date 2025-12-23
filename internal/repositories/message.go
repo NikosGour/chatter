@@ -15,6 +15,7 @@ import (
 type MessageRepository interface {
 	GetAll() ([]MessageDBO, error)
 	GetByID(id int64) (*MessageDBO, error)
+	GetByTabID(tab_id uuid.UUID) ([]MessageDBO, error)
 	Create(group *MessageDBO) (int64, error)
 }
 
@@ -88,6 +89,28 @@ func (mr *messageRepository) GetByID(id int64) (*MessageDBO, error) {
 	}
 
 	return &mdbo, err
+}
+
+func (mr *messageRepository) GetByTabID(tab_id uuid.UUID) ([]MessageDBO, error) {
+	mdbos := []MessageDBO{}
+	q := `SELECT m.*,
+       	         u.id        AS "user.id",
+       	         u.username  AS "user.username",
+       	         t.id        AS "tab.id",
+       	         t.server_id AS "tab.server_id",
+       	         t.name      AS "tab.name"
+		  FROM messages m
+		  JOIN users u ON u.id = m.sender_id
+		  JOIN tabs t ON m.tab_id = t.id
+		  WHERE t.id = $1;`
+
+	err := mr.db.Select(&mdbos, q, tab_id)
+	if err != nil {
+		return nil, err
+	}
+
+	return mdbos, nil
+
 }
 
 // Inserts a message into a database.

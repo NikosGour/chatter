@@ -60,3 +60,23 @@ func (mc *MessageController) GetById(c *fiber.Ctx) error {
 
 	return c.JSON(mdto)
 }
+
+func (mc *MessageController) GetByTabId(c *fiber.Ctx) error {
+	tab_id, err := common.ParamsParseUUID(c, "tab_id")
+	if err != nil {
+		return common.JSONErr(c, err.Error(), fiber.StatusBadRequest)
+	}
+
+	messages, err := mc.message_service.GetByTabID(tab_id)
+	if err != nil {
+		return common.JSONErr(c, err.Error())
+	}
+
+	message_dtos := []services.MessageDTO{}
+	for _, message := range messages {
+		mdto := mc.message_service.MessageToDTO(&message)
+		message_dtos = append(message_dtos, *mdto)
+	}
+
+	return c.JSON(message_dtos)
+}
