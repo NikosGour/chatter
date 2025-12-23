@@ -19,6 +19,7 @@ type Server struct {
 	Users       []User    `json:"users,omitempty" db:"users"`
 	Tabs        []Tab     `json:"tabs,omitempty" db:"tabs"`
 	DateCreated time.Time `json:"date_created,omitempty" db:"date_created"`
+	IsTest      bool      `db:"is_test"`
 }
 
 func (s Server) Validate() error {

@@ -17,6 +17,7 @@ type User struct {
 	Username    string    `json:"username,omitempty" db:"username"`
 	Password    string    `json:"password,omitempty" db:"password"`
 	DateCreated time.Time `json:"date_created,omitempty,omitzero" db:"date_created"`
+	IsTest      bool      `db:"is_test"`
 }
 
 func (u User) Validate() error {

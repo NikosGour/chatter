@@ -15,6 +15,7 @@ type ServerRepository interface {
 	GetAll() ([]ServerDBO, error)
 	GetByID(id uuid.UUID) (*ServerDBO, error)
 	GetByName(name string) ([]ServerDBO, error)
+	GetByTestName(name string) ([]ServerDBO, error)
 	Create(Server *ServerDBO) (uuid.UUID, error)
 	AddUserToServer(user_id uuid.UUID, server_id uuid.UUID) error
 	GetUsers(server_id uuid.UUID) ([]uuid.UUID, error)
@@ -86,14 +87,31 @@ func (sr *serverRepository) GetByName(name string) ([]ServerDBO, error) {
 
 	return sdbos, nil
 }
+func (sr *serverRepository) GetByTestName(name string) ([]ServerDBO, error) {
+	sdbos := []ServerDBO{}
+	q := `SELECT id, name, date_created
+		  FROM servers
+	      WHERE name = $1 and is_test = true;`
+
+	err := sr.db.Select(&sdbos, q, name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w:%s", models.ErrUserNotFound, name)
+		}
+		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
+	}
+
+	return sdbos, nil
+
+}
 
 // Inserts a server into a database.
 //
 // Returns the UUID of the created server.
 // Might return any sql error
 func (sr *serverRepository) Create(server *ServerDBO) (uuid.UUID, error) {
-	q := `INSERT INTO servers (id, name, date_created)
-		  VALUES (:id, :name, :date_created)
+	q := `INSERT INTO servers (id, name, date_created, is_test)
+		  VALUES (:id, :name, :date_created, :is_test)
 		  RETURNING id;`
 
 	insert_id := uuid.Nil

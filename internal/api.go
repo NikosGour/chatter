@@ -3,6 +3,7 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/NikosGour/chatter/internal/common"
@@ -161,14 +162,11 @@ func (s *APIServer) DependencyInjection() {
 }
 
 func (s *APIServer) SetupDummyData() {
-	magic := "FBdBSTu/F4/t7JIcdfZcGWPBNeUbd5a2S7FIBvquKnk="
-
 	usernames := []string{"nikos", "maria", "rinos", "nisfa", "gkai", "mitsos"}
 	user_ids := []uuid.UUID{}
 	for _, username := range usernames {
-		username_m := username + magic
 
-		user, err := s.user_service.GetByUsername(username_m)
+		user, err := s.user_service.GetByTestUsername(username)
 		if err != nil {
 			if !errors.Is(err, models.ErrUserNotFound) {
 				log.Warn("%s", err)
@@ -181,7 +179,7 @@ func (s *APIServer) SetupDummyData() {
 			continue
 		}
 
-		id, err := s.user_service.Create(&repositories.UserDBO{Username: username_m, Password: "123", DateCreated: time.Now()})
+		id, err := s.user_service.Create(&repositories.UserDBO{Username: username, Password: "123", DateCreated: time.Now(), IsTest: true})
 		if err != nil {
 			log.Warn("%s", err)
 		}
@@ -211,8 +209,7 @@ func (s *APIServer) SetupDummyData() {
 	}
 	server_ids := []uuid.UUID{}
 	for _, ser := range servers {
-		name_m := ser.Name + magic
-		server, err := s.server_service.GetByName(name_m)
+		server, err := s.server_service.GetByTestName(ser.Name)
 		if err != nil {
 			if !errors.Is(err, models.ErrServerNotFound) {
 				log.Warn("%s", err)
@@ -224,7 +221,7 @@ func (s *APIServer) SetupDummyData() {
 			continue
 		}
 
-		id, err := s.server_service.Create(&repositories.ServerDBO{Name: name_m, DateCreated: time.Now()})
+		id, err := s.server_service.Create(&repositories.ServerDBO{Name: ser.Name, DateCreated: time.Now(), IsTest: true})
 		if err != nil {
 			log.Warn("%s", err)
 		}
@@ -249,9 +246,7 @@ func (s *APIServer) SetupDummyData() {
 	}
 
 	for _, t := range tabs {
-
-		name_m := t.Name + magic
-		_, err := s.tab_service.GetByName(name_m)
+		_, err := s.tab_service.GetByName(t.Name)
 		if err != nil {
 			if errors.Is(err, models.ErrTabNotFound) {
 				continue
@@ -263,7 +258,19 @@ func (s *APIServer) SetupDummyData() {
 
 		for _, idx := range t.Servers_idx {
 			server_id := server_ids[idx]
-			_, err := s.tab_service.Create(&repositories.TabDBO{Name: name_m, ServerId: server_id, DateCreated: time.Now()})
+			tabs, err := s.server_service.GetTabs(server_id)
+			if err != nil {
+				log.Warn("%s", err)
+				continue
+			}
+
+			if slices.ContainsFunc(tabs, func(tab models.Tab) bool {
+				return tab.Name == t.Name
+			}) {
+				continue
+			}
+
+			_, err = s.tab_service.Create(&repositories.TabDBO{Name: t.Name, ServerId: server_id, DateCreated: time.Now()})
 			if err != nil {
 				log.Warn("%s", err)
 			}

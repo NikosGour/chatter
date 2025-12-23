@@ -14,6 +14,7 @@ type UserRepository interface {
 	GetAll() ([]UserDBO, error)
 	GetByID(id uuid.UUID) (*UserDBO, error)
 	GetByUsername(username string) ([]UserDBO, error)
+	GetByTestUsername(username string) ([]UserDBO, error)
 	Create(user *UserDBO) (uuid.UUID, error)
 }
 
@@ -79,13 +80,30 @@ func (ur *userRepository) GetByUsername(username string) ([]UserDBO, error) {
 	return udbos, nil
 }
 
+func (ur *userRepository) GetByTestUsername(username string) ([]UserDBO, error) {
+	udbos := []UserDBO{}
+	q := `SELECT id, username, password, date_created
+		  FROM users
+	      WHERE username = $1 and is_test = true;`
+
+	err := ur.db.Select(&udbos, q, username)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w:%s", models.ErrUserNotFound, username)
+		}
+		return nil, fmt.Errorf("on q=`%s`: %w", q, err)
+	}
+
+	return udbos, nil
+}
+
 // Inserts a userinto a database.
 //
 // Returns the UUID of the created user.
 // Might return any sql error
 func (ur *userRepository) Create(user *UserDBO) (uuid.UUID, error) {
-	q := `INSERT INTO users (id, username, password, date_created)
-		  VALUES (:id, :username, :password, :date_created)
+	q := `INSERT INTO users (id, username, password, date_created, is_test)
+		  VALUES (:id, :username, :password, :date_created, :is_test)
 		  RETURNING id;`
 
 	insert_id := uuid.Nil
